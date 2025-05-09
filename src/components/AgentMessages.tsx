@@ -16,12 +16,14 @@ interface AgentMessagesProps {
   messages: Message[];
   agentId?: number;
   allAgents?: boolean;
+  currentTopic?: string;
 }
 
 const AgentMessages: React.FC<AgentMessagesProps> = ({ 
   messages, 
   agentId, 
-  allAgents = false 
+  allAgents = false,
+  currentTopic
 }) => {
   // Sort messages by timestamp, newest first
   const sortedMessages = [...messages].sort((a, b) => b.timestamp - a.timestamp);
@@ -45,7 +47,12 @@ const AgentMessages: React.FC<AgentMessagesProps> = ({
           <MessageCircle className="h-5 w-5" />
           {allAgents ? "Recent Network Messages" : agentId !== undefined ? `Messages from Agent #${agentId}` : "Messages"}
         </CardTitle>
-        <CardDescription>
+        <CardDescription className="flex flex-col gap-1">
+          {currentTopic && (
+            <div className="flex items-center gap-2 mb-1">
+              <Badge variant="outline" className="bg-slate-100">Topic: {currentTopic}</Badge>
+            </div>
+          )}
           {messages.length > 0 
             ? `Showing ${Math.min(10, messages.length)} of ${messages.length} messages` 
             : "No messages yet"}

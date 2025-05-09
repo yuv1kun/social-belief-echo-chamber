@@ -1,95 +1,45 @@
 
 import React, { useState } from "react";
-import { Message } from "@/lib/simulation";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  CardFooter,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { downloadCSV, generateMessageLogExport } from "@/lib/simulation";
-import { Network } from "@/lib/simulation";
 import AgentMessages from "./AgentMessages";
+import { Network } from "@/lib/simulation";
 
 interface NetworkMessagesProps {
   network: Network;
 }
 
 const NetworkMessages: React.FC<NetworkMessagesProps> = ({ network }) => {
-  const [activeTab, setActiveTab] = useState<string>("all");
-
-  const handleExportMessages = () => {
-    const csv = generateMessageLogExport(network);
-    downloadCSV(csv, `message_log_${Date.now()}.csv`);
-  };
-
-  // Get only believer messages
-  const believerMessages = network.messageLog.filter(m => m.belief);
+  const [activeTab, setActiveTab] = useState<"all" | "recent">("all");
   
-  // Get only non-believer messages
-  const nonBelieverMessages = network.messageLog.filter(m => !m.belief);
-
+  // Get all messages from the network log
+  const allMessages = network.messageLog;
+  
+  // Get only the most recent messages (last simulation step)
+  const recentMessages = network.messageLog.slice(-20);
+  
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <CardTitle>Network Messages</CardTitle>
-        <CardDescription>
-          Communication between agents in the network ({network.messageLog.length} total messages)
-        </CardDescription>
-      </CardHeader>
-      
-      <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab}>
-        <div className="px-6">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="all">All Messages</TabsTrigger>
-            <TabsTrigger value="believers">Believers</TabsTrigger>
-            <TabsTrigger value="nonbelievers">Non-Believers</TabsTrigger>
-          </TabsList>
-        </div>
-        
-        <TabsContent value="all" className="m-0">
-          <CardContent className="pt-4">
-            <AgentMessages 
-              messages={network.messageLog} 
-              allAgents={true} 
-            />
-          </CardContent>
+    <div className="space-y-4">
+      <Tabs defaultValue="all" onValueChange={(value) => setActiveTab(value as "all" | "recent")}>
+        <TabsList className="grid grid-cols-2 w-full">
+          <TabsTrigger value="all">All Messages</TabsTrigger>
+          <TabsTrigger value="recent">Recent Messages</TabsTrigger>
+        </TabsList>
+        <TabsContent value="all" className="pt-4">
+          <AgentMessages 
+            messages={allMessages} 
+            allAgents 
+            currentTopic={network.currentTopic}
+          />
         </TabsContent>
-
-        <TabsContent value="believers" className="m-0">
-          <CardContent className="pt-4">
-            <AgentMessages 
-              messages={believerMessages} 
-              allAgents={true} 
-            />
-          </CardContent>
-        </TabsContent>
-
-        <TabsContent value="nonbelievers" className="m-0">
-          <CardContent className="pt-4">
-            <AgentMessages 
-              messages={nonBelieverMessages} 
-              allAgents={true} 
-            />
-          </CardContent>
+        <TabsContent value="recent" className="pt-4">
+          <AgentMessages 
+            messages={recentMessages} 
+            allAgents 
+            currentTopic={network.currentTopic}
+          />
         </TabsContent>
       </Tabs>
-
-      <CardFooter className="flex justify-end">
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={handleExportMessages}
-          disabled={network.messageLog.length === 0}
-        >
-          Export Message Log
-        </Button>
-      </CardFooter>
-    </Card>
+    </div>
   );
 };
 

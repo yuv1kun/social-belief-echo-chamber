@@ -22,6 +22,7 @@ export type Message = {
   timestamp: number;
   content: string;
   belief: boolean; // The belief state when the message was sent
+  topic?: string; // The topic of discussion
 };
 
 export type Agent = {
@@ -36,12 +37,14 @@ export type Agent = {
   thoughtState?: string; // Internal thought about current belief
   messages: Message[]; // Messages sent by this agent
   receivedMessages: Message[]; // Messages received by this agent
+  currentTopic?: string; // Current topic the agent is discussing
 };
 
 export type Network = {
   nodes: Agent[];
   links: { source: number; target: number }[];
   messageLog: Message[];
+  currentTopic?: string; // Current network-wide topic
 };
 
 export type SimulationConfig = {
@@ -53,34 +56,34 @@ export type SimulationConfig = {
   currentStep: number;
 };
 
-/**
- * Lists of Indian names by gender for generating agent names
- */
-const indianNames = {
-  male: [
-    "Aarav", "Vivaan", "Aditya", "Vihaan", "Arjun", 
-    "Reyansh", "Aryan", "Dhruv", "Krishna", "Atharv",
-    "Ishaan", "Shaurya", "Advait", "Rudra", "Pranav", 
-    "Veer", "Kabir", "Yuvraj", "Arnav", "Aayan",
-    "Siddharth", "Ansh", "Shivansh", "Karan", "Pratham",
-    "Rishi", "Rohan", "Varun", "Rahul", "Soham",
-    "Ayush", "Nikhil", "Tanay", "Jayesh", "Sahil",
-    "Gagan", "Harsh", "Indra", "Nakul", "Praneet",
-    "Rajesh", "Samir", "Vikas", "Deepak", "Manish",
-    "Mukesh", "Sunil", "Vikram", "Akshay", "Dev"
-  ],
-  female: [
-    "Aadhya", "Saanvi", "Aaradhya", "Ananya", "Aanya", 
-    "Pari", "Anika", "Navya", "Diya", "Sara",
-    "Kiara", "Myra", "Ishita", "Ahana", "Angel", 
-    "Avni", "Aditi", "Prisha", "Riya", "Aarohi",
-    "Anvi", "Ritika", "Kashvi", "Tanya", "Khushi",
-    "Divya", "Meera", "Siya", "Amyra", "Nisha",
-    "Kavya", "Neha", "Pooja", "Shruti", "Isha",
-    "Archana", "Deepika", "Kiran", "Lakshmi", "Mira",
-    "Priyanka", "Shreya", "Tanvi", "Usha", "Vaani",
-    "Zara", "Alisha", "Brinda", "Chandni", "Devi"
-  ]
+// List of real-world topics for agents to discuss
+export const discussionTopics = [
+  "Climate change and its effects",
+  "Vegetarianism vs. non-vegetarian diets",
+  "Effectiveness of online education",
+  "Cricket World Cup predictions",
+  "Should mobile phones be allowed in schools?",
+  "Benefits of yoga and meditation",
+  "Bollywood vs. Hollywood movies",
+  "Public transportation in Indian cities",
+  "Traditional medicine vs. modern medicine",
+  "Work from home vs. office work",
+  "Social media's impact on society",
+  "Arranged marriages in modern India",
+  "Importance of learning multiple languages",
+  "Indian street food safety",
+  "Electric vehicles in India",
+  "Future of artificial intelligence",
+  "Online shopping vs. local markets",
+  "Indian classical music popularity among youth",
+  "Water conservation methods",
+  "Traditional festivals in modern times"
+];
+
+// Select a random topic from the list
+export const getRandomTopic = (): string => {
+  const index = Math.floor(Math.random() * discussionTopics.length);
+  return discussionTopics[index];
 };
 
 /**
@@ -130,9 +133,33 @@ export const calculateSusceptibility = (traits: BigFiveTraits): number => {
  * @returns A string representing the agent's internal thought
  */
 export const generateThought = (agent: Agent): string => {
-  const { traits, believer } = agent;
+  const { traits, believer, currentTopic } = agent;
   const { openness, conscientiousness, extraversion, agreeableness, neuroticism } = traits;
 
+  // Topic-specific thoughts
+  if (currentTopic) {
+    if (believer) {
+      const topicThoughts = [
+        `I think this ${currentTopic} discussion is really important.`,
+        `Everyone should be talking about ${currentTopic} more.`,
+        `I'm glad we're discussing ${currentTopic}, it matters a lot.`,
+        `I have strong opinions about ${currentTopic}.`,
+        `I've read a lot about ${currentTopic} recently.`
+      ];
+      return topicThoughts[Math.floor(Math.random() * topicThoughts.length)];
+    } else {
+      const topicThoughts = [
+        `I'm not sure what to think about ${currentTopic} yet.`,
+        `People seem to overreact about ${currentTopic}.`,
+        `I need more information before forming an opinion on ${currentTopic}.`,
+        `I'm skeptical about what people are saying regarding ${currentTopic}.`,
+        `I wonder if ${currentTopic} is really as important as people think.`
+      ];
+      return topicThoughts[Math.floor(Math.random() * topicThoughts.length)];
+    }
+  }
+
+  // Fall back to general thoughts if no topic
   const thoughts = {
     believer: [
       "This belief makes so much sense to me.",
@@ -158,14 +185,46 @@ export const generateThought = (agent: Agent): string => {
 };
 
 /**
- * Generate a message from an agent based on their personality, beliefs and thought
+ * Generate a message from an agent based on their personality, beliefs, thought, and current topic
  * @param agent The agent sending the message
  * @param receiverId The recipient agent id (null for broadcast)
  * @returns A message object
  */
 export const generateMessage = (agent: Agent, receiverId: number | null = null): Message => {
-  const { traits, believer, id, thoughtState, name, gender } = agent;
+  const { traits, believer, id, thoughtState, name, gender, currentTopic } = agent;
   const { openness, conscientiousness, extraversion, agreeableness, neuroticism } = traits;
+  
+  // Topic-specific messages based on the current network topic
+  let topicMessages = [];
+  if (currentTopic) {
+    if (believer) {
+      topicMessages = [
+        `What do you all think about ${currentTopic}? I've been reading about it and think it's really important.`,
+        `Has anyone been following the news about ${currentTopic}? I found some interesting articles!`,
+        `I was just talking to my friend about ${currentTopic} yesterday. It's such a relevant issue.`,
+        `${currentTopic} is something we need to take seriously. I've seen its effects firsthand.`,
+        `Let's discuss ${currentTopic} - I think there's a lot of misinformation going around.`,
+        `Anyone have strong opinions on ${currentTopic}? I'm definitely in favor of addressing it.`,
+        `My cousin works in a field related to ${currentTopic} and says we should all be concerned.`,
+        `Does anyone else find ${currentTopic} fascinating? I can't stop reading about it!`,
+        `I'm convinced that ${currentTopic} will be one of the defining issues of our generation.`,
+        `We need more awareness about ${currentTopic}, not enough people understand its importance.`
+      ];
+    } else {
+      topicMessages = [
+        `I don't get the hype around ${currentTopic}. Is it really that big of a deal?`,
+        `People are overreacting about ${currentTopic} IMO. Let's be rational here.`,
+        `I've been researching ${currentTopic} and I'm not convinced by what I'm seeing.`,
+        `Can someone explain why ${currentTopic} matters so much? I'm genuinely curious.`,
+        `My friend who's an expert says ${currentTopic} is being blown out of proportion.`,
+        `I used to worry about ${currentTopic} until I actually looked into the facts.`,
+        `Let's be skeptical about what we hear regarding ${currentTopic}.`,
+        `Does anyone have reliable sources about ${currentTopic}? Not just social media posts?`,
+        `I think we need more evidence before jumping to conclusions about ${currentTopic}.`,
+        `I'm keeping an open mind about ${currentTopic}, but so far I'm not convinced.`
+      ];
+    }
+  }
   
   // Varied message templates for believers with conversational language
   const believerTemplates = [
@@ -237,8 +296,11 @@ export const generateMessage = (agent: Agent, receiverId: number | null = null):
     " 🤦‍♂️"
   ];
   
-  // Select base message based on belief
-  const templates = believer ? believerTemplates : nonBelieverTemplates;
+  // Select topic-based message if available, otherwise use general templates
+  const templates = currentTopic ? 
+    (topicMessages.length > 0 ? topicMessages : (believer ? believerTemplates : nonBelieverTemplates)) : 
+    (believer ? believerTemplates : nonBelieverTemplates);
+    
   const baseIndex = Math.floor(Math.random() * templates.length);
   
   // Add random conversational elements
@@ -281,7 +343,8 @@ export const generateMessage = (agent: Agent, receiverId: number | null = null):
     receiverId,
     timestamp: Date.now(),
     content,
-    belief: believer
+    belief: believer,
+    topic: currentTopic
   };
 };
 
@@ -611,18 +674,28 @@ export const exchangeMessages = (network: Network): Network => {
  * @returns Updated network after one step of belief propagation
  */
 export const runBeliefPropagationStep = (network: Network): Network => {
-  // First exchange messages
-  let newNetwork = exchangeMessages(network);
-
-  // Deep clone nodes to avoid reference issues
-  newNetwork = { 
-    nodes: JSON.parse(JSON.stringify(newNetwork.nodes)),
-    links: [...newNetwork.links],
-    messageLog: [...newNetwork.messageLog]
+  // Assign a new random topic for this simulation step
+  const currentTopic = getRandomTopic();
+  
+  // Deep clone network to avoid reference issues
+  let newNetwork = { 
+    ...network,
+    currentTopic,
+    nodes: JSON.parse(JSON.stringify(network.nodes)),
+    links: [...network.links],
+    messageLog: [...network.messageLog]
   };
+  
+  // Assign the topic to each agent
+  newNetwork.nodes.forEach(agent => {
+    agent.currentTopic = currentTopic;
+  });
+
+  // Exchange messages with the new topic
+  newNetwork = exchangeMessages(newNetwork);
 
   // For each agent, check neighbors' beliefs and received messages
-  newNetwork.nodes.forEach((agent, index) => {
+  newNetwork.nodes.forEach((agent) => {
     const neighbors = agent.neighbors;
     
     if (neighbors.length === 0) {
