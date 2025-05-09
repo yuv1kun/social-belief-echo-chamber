@@ -56,24 +56,23 @@ const AgentMessages: React.FC<AgentMessagesProps> = ({
           {recentMessages.length > 0 ? (
             <div className="space-y-4">
               {recentMessages.map((message) => (
-                <div key={message.id} className="flex flex-col space-y-1 border-l-2 pl-4 border-muted-foreground/20">
+                <div key={message.id} className="flex flex-col space-y-1 border-l-2 pl-4 border-muted-foreground/20 hover:bg-muted/50 rounded p-2 transition-colors">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-medium">{`Agent #${message.senderId}`}</span>
-                      {message.receiverId !== null && (
-                        <span className="text-xs text-muted-foreground">
-                          → Agent #{message.receiverId}
-                        </span>
-                      )}
+                      <span className="text-xs font-medium">
+                        {message.senderId !== agentId ? (
+                          <>From Agent #{message.senderId}</>
+                        ) : (
+                          <>To {message.receiverId !== null ? `Agent #${message.receiverId}` : "Everyone"}</>
+                        )}
+                      </span>
+                      <Badge variant={message.belief ? "default" : "secondary"} className="text-xs">
+                        {message.belief ? "Believer" : "Skeptic"}
+                      </Badge>
                     </div>
                     <span className="text-xs text-muted-foreground">{formatTime(message.timestamp)}</span>
                   </div>
-                  <p className="text-sm">{message.content}</p>
-                  <div>
-                    <Badge variant={message.belief ? "default" : "secondary"} className="text-xs">
-                      {message.belief ? "Believer" : "Non-Believer"}
-                    </Badge>
-                  </div>
+                  <p className="text-sm font-medium">{message.content}</p>
                 </div>
               ))}
             </div>

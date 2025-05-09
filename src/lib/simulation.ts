@@ -167,56 +167,112 @@ export const generateMessage = (agent: Agent, receiverId: number | null = null):
   const { traits, believer, id, thoughtState, name, gender } = agent;
   const { openness, conscientiousness, extraversion, agreeableness, neuroticism } = traits;
   
-  // Base message templates based on belief
-  const messageTemplates = {
-    believer: [
-      "I think this belief is correct because...",
-      "The evidence clearly shows that...",
-      "Have you considered that this might be true?",
-      "I'm pretty sure this is right.",
-      "Let me explain why this makes sense..."
-    ],
-    nonBeliever: [
-      "I'm not convinced by this belief because...",
-      "The evidence doesn't support that...",
-      "Have you considered the alternative view?",
-      "I'm not sure that's correct.",
-      "I think we should be skeptical about..."
-    ]
-  };
+  // Varied message templates for believers with conversational language
+  const believerTemplates = [
+    `I think this is definitely true because my cousin experienced something similar!`,
+    `Have you seen the latest evidence? It's pretty convincing tbh`,
+    `I was skeptical at first but now I'm totally on board with this`,
+    `This makes a lot of sense when you think about it...`,
+    `I read about this yesterday and it clicked for me`,
+    `I can't believe more people don't see this is real`,
+    `My friend showed me proof and I was like... wow`,
+    `This explains so many things that were confusing me before`,
+    `I've been saying this for ages, glad others are catching on`,
+    `Trust me, there's solid evidence behind this`
+  ];
+  
+  // Varied message templates for non-believers with conversational language
+  const nonBelieverTemplates = [
+    `I'm not buying it, seems like people are jumping to conclusions`,
+    `Has anyone actually verified this from reliable sources?`,
+    `I checked the facts and they don't add up at all`,
+    `This sounds like another internet rumor tbh`,
+    `I need way more proof before I believe something like this`,
+    `My cousin works in this field and says it's completely false`,
+    `People will believe anything these days 🙄`,
+    `I used to think this was true until I did my research`,
+    `This has been debunked so many times already`,
+    `Let's be real, this doesn't make any logical sense`
+  ];
 
+  // Casual intros to make messages sound more natural
+  const casualIntros = [
+    "",
+    "Hey! ",
+    "So... ",
+    "Guys, ",
+    "Listen, ",
+    "TBH ",
+    "IMO ",
+    "Not gonna lie, ",
+    "Just saying, ",
+    "FYI - "
+  ];
+  
+  // Conversational endings
+  const conversationalEndings = [
+    "",
+    " What do you all think?",
+    " Agree?",
+    " Am I wrong?",
+    " Thoughts?",
+    " Anyone else feel this way?",
+    " Just my two cents.",
+    " Sorry if that's controversial!",
+    " That's my take anyway.",
+    " I might be wrong tho."
+  ];
+  
+  // Add emojis occasionally
+  const emojis = [
+    "",
+    " 😊",
+    " 🤔",
+    " 👀",
+    " 💯",
+    " 🙌",
+    " 😂",
+    " 👍",
+    " 🤷‍♀️",
+    " 🤦‍♂️"
+  ];
+  
   // Select base message based on belief
-  let templates = believer ? messageTemplates.believer : messageTemplates.nonBeliever;
-  let baseIndex = Math.floor(Math.random() * templates.length);
-  let content = templates[baseIndex];
+  const templates = believer ? believerTemplates : nonBelieverTemplates;
+  const baseIndex = Math.floor(Math.random() * templates.length);
+  
+  // Add random conversational elements
+  const intro = casualIntros[Math.floor(Math.random() * casualIntros.length)];
+  const ending = conversationalEndings[Math.floor(Math.random() * conversationalEndings.length)];
+  const emoji = Math.random() > 0.7 ? emojis[Math.floor(Math.random() * emojis.length)] : "";
+  
+  // Construct the message with natural phrasing
+  let content = `${name}: ${intro}${templates[baseIndex]}${emoji}${ending}`;
+  
+  // Modify message based on personality traits but keep it subtle
+  if (traits.agreeableness > 0.8 && Math.random() > 0.5) {
+    content = `${content} (I respect everyone's opinions on this though!)`;
+  }
+  
+  if (traits.neuroticism > 0.8 && Math.random() > 0.6) {
+    content = `${content} I get so stressed thinking about this stuff...`;
+  }
+  
+  if (traits.extraversion > 0.8 && Math.random() > 0.6) {
+    content = `${content} EVERYONE NEEDS TO KNOW ABOUT THIS!!`;
+  }
+  
+  if (traits.openness > 0.8 && Math.random() > 0.7) {
+    content = `${content} I'm open to changing my mind if someone shows me good evidence.`;
+  }
+  
+  if (traits.conscientiousness > 0.8 && Math.random() > 0.7) {
+    content = `${content} I've been researching this carefully for a while now.`;
+  }
 
-  // Add name to the message
-  content = `${name} says: ${content}`;
-
-  // Modify content based on personality traits
-  if (agreeableness > 0.7) {
-    content = `${content} What do you think?`;
-  }
-  
-  if (neuroticism > 0.7) {
-    content = `${content} I'm worried about being wrong.`;
-  }
-  
-  if (extraversion > 0.7) {
-    content = `Hey everyone! ${content}`;
-  }
-  
-  if (openness > 0.7) {
-    content = `${content} I'm open to other perspectives though.`;
-  }
-  
-  if (conscientiousness > 0.7) {
-    content = `After careful consideration, ${content}`;
-  }
-
-  // Add thought if available
-  if (thoughtState) {
-    content = `${content} (Internally: "${thoughtState}")`;
+  // Add thought if available (with probability to make it more natural)
+  if (thoughtState && Math.random() > 0.7) {
+    content = `${content} (Thinking to myself: "${thoughtState}")`;
   }
 
   return {
