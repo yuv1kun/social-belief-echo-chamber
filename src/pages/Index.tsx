@@ -6,6 +6,7 @@ import NetworkVisualization from "@/components/NetworkVisualization";
 import SimulationControls from "@/components/SimulationControls";
 import AgentDetails from "@/components/AgentDetails";
 import SimulationStats from "@/components/SimulationStats";
+import NetworkMessages from "@/components/NetworkMessages";
 import {
   Agent,
   Network,
@@ -18,6 +19,9 @@ import {
   initializeAgents,
   runBeliefPropagationStep,
 } from "@/lib/simulation";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Button } from "@/components/ui/button";
+import { MessageCircle } from "lucide-react";
 
 const Index = () => {
   // Simulation state
@@ -234,6 +238,28 @@ const Index = () => {
             historyData={historyData}
             statistics={statistics}
           />
+          
+          {/* Mobile-only sheet for messages */}
+          <div className="md:hidden">
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button className="w-full gap-2">
+                  <MessageCircle className="h-4 w-4" />
+                  View Network Messages
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="bottom" className="h-[80vh]">
+                <div className="py-6">
+                  <NetworkMessages network={network} />
+                </div>
+              </SheetContent>
+            </Sheet>
+          </div>
+          
+          {/* Desktop-only message display */}
+          <div className="hidden md:block">
+            <NetworkMessages network={network} />
+          </div>
         </div>
         
         <div className="space-y-6">

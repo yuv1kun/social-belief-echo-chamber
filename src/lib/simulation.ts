@@ -1,4 +1,3 @@
-
 /**
  * Simulation utility for social belief echo chamber
  * Handles agent creation, network generation, and belief propagation
@@ -14,6 +13,15 @@ export type BigFiveTraits = {
   neuroticism: number;
 };
 
+export type Message = {
+  id: string;
+  senderId: number;
+  receiverId: number | null; // null for broadcast messages
+  timestamp: number;
+  content: string;
+  belief: boolean; // The belief state when the message was sent
+};
+
 export type Agent = {
   id: number;
   traits: BigFiveTraits;
@@ -21,11 +29,15 @@ export type Agent = {
   neighbors: number[];
   beliefHistory: boolean[];
   susceptibility?: number; // Calculated value based on traits
+  thoughtState?: string; // Internal thought about current belief
+  messages: Message[]; // Messages sent by this agent
+  receivedMessages: Message[]; // Messages received by this agent
 };
 
 export type Network = {
   nodes: Agent[];
   links: { source: number; target: number }[];
+  messageLog: Message[];
 };
 
 export type SimulationConfig = {
@@ -69,6 +81,108 @@ export const calculateSusceptibility = (traits: BigFiveTraits): number => {
 };
 
 /**
+ * Generate a thought state for an agent based on their personality and belief
+ * @param agent The agent to generate a thought for
+ * @returns A string representing the agent's internal thought
+ */
+export const generateThought = (agent: Agent): string => {
+  const { traits, believer } = agent;
+  const { openness, conscientiousness, extraversion, agreeableness, neuroticism } = traits;
+
+  const thoughts = {
+    believer: [
+      "This belief makes so much sense to me.",
+      "I'm convinced this is correct.",
+      "The evidence for this is compelling.",
+      "I'm certain this is the right position.",
+      "This position aligns with my values."
+    ],
+    nonBeliever: [
+      "I'm not convinced by this belief.",
+      "I need more evidence before accepting this.",
+      "This doesn't seem right to me.",
+      "I'm skeptical about this claim.",
+      "I don't think this position is correct."
+    ]
+  };
+
+  // Adjust thought based on personality traits
+  let thoughtBase = believer ? thoughts.believer : thoughts.nonBeliever;
+  let thoughtIndex = Math.floor(Math.random() * thoughtBase.length);
+  
+  return thoughtBase[thoughtIndex];
+};
+
+/**
+ * Generate a message from an agent based on their personality, beliefs and thought
+ * @param agent The agent sending the message
+ * @param receiverId The recipient agent id (null for broadcast)
+ * @returns A message object
+ */
+export const generateMessage = (agent: Agent, receiverId: number | null = null): Message => {
+  const { traits, believer, id, thoughtState } = agent;
+  const { openness, conscientiousness, extraversion, agreeableness, neuroticism } = traits;
+  
+  // Base message templates based on belief
+  const messageTemplates = {
+    believer: [
+      "I think this belief is correct because...",
+      "The evidence clearly shows that...",
+      "Have you considered that this might be true?",
+      "I'm pretty sure this is right.",
+      "Let me explain why this makes sense..."
+    ],
+    nonBeliever: [
+      "I'm not convinced by this belief because...",
+      "The evidence doesn't support that...",
+      "Have you considered the alternative view?",
+      "I'm not sure that's correct.",
+      "I think we should be skeptical about..."
+    ]
+  };
+
+  // Select base message based on belief
+  let templates = believer ? messageTemplates.believer : messageTemplates.nonBeliever;
+  let baseIndex = Math.floor(Math.random() * templates.length);
+  let content = templates[baseIndex];
+
+  // Modify content based on personality traits
+  if (agreeableness > 0.7) {
+    content = `${content} What do you think?`;
+  }
+  
+  if (neuroticism > 0.7) {
+    content = `${content} I'm worried about being wrong.`;
+  }
+  
+  if (extraversion > 0.7) {
+    content = `Hey everyone! ${content}`;
+  }
+  
+  if (openness > 0.7) {
+    content = `${content} I'm open to other perspectives though.`;
+  }
+  
+  if (conscientiousness > 0.7) {
+    content = `After careful consideration, ${content}`;
+  }
+
+  // Add thought if available
+  if (thoughtState) {
+    content = `${content} (Internally: "${thoughtState}")`;
+  }
+
+  return {
+    id: `msg_${id}_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+    senderId: id,
+    receiverId,
+    timestamp: Date.now(),
+    content,
+    belief: believer
+  };
+};
+
+/**
  * Initialize agents with random traits and assign initial believers
  * @param count Number of agents to create
  * @param initialBelieverPercentage Percentage of agents that start as believers
@@ -91,6 +205,8 @@ export const initializeAgents = (
       neighbors: [],
       beliefHistory: [],
       susceptibility,
+      messages: [],
+      receivedMessages: []
     });
   }
 
@@ -114,6 +230,9 @@ export const initializeAgents = (
     if (agent.beliefHistory.length === 0) {
       agent.beliefHistory = [false];
     }
+    
+    // Generate initial thought
+    agent.thoughtState = generateThought(agent);
   });
 
   return agents;
@@ -303,18 +422,72 @@ export const createNetwork = (
   type: "random" | "scale-free" | "small-world",
   density: number
 ): Network => {
+  let result;
+  
   switch (type) {
     case "random":
-      return createRandomNetwork(agents, density);
+      result = createRandomNetwork(agents, density);
+      break;
     case "scale-free":
       const m = Math.max(2, Math.floor(density * 10)); // Convert density to connections
-      return createScaleFreeNetwork(agents, m);
+      result = createScaleFreeNetwork(agents, m);
+      break;
     case "small-world":
       const k = Math.max(4, Math.floor(density * 10)); // Convert density to nearest neighbors
-      return createSmallWorldNetwork(agents, k % 2 === 0 ? k : k + 1);
+      result = createSmallWorldNetwork(agents, k % 2 === 0 ? k : k + 1);
+      break;
     default:
-      return createRandomNetwork(agents, density);
+      result = createRandomNetwork(agents, density);
   }
+  
+  // Initialize empty message log
+  return {
+    ...result,
+    messageLog: []
+  };
+};
+
+/**
+ * Exchange messages between agents in the network
+ * @param network Current network state
+ * @returns Updated network with exchanged messages
+ */
+export const exchangeMessages = (network: Network): Network => {
+  const updatedNetwork = { ...network };
+  const newMessages: Message[] = [];
+
+  // Each agent generates and sends messages
+  updatedNetwork.nodes.forEach((agent) => {
+    // Generate a new thought state
+    agent.thoughtState = generateThought(agent);
+    
+    // Send messages to neighbors (weighted by extraversion)
+    const messageCount = Math.floor(agent.traits.extraversion * 3) + 1;
+    
+    for (let i = 0; i < messageCount; i++) {
+      if (agent.neighbors.length > 0) {
+        // Choose a random neighbor
+        const neighborIndex = Math.floor(Math.random() * agent.neighbors.length);
+        const receiverId = agent.neighbors[neighborIndex];
+        
+        // Generate and send message
+        const message = generateMessage(agent, receiverId);
+        agent.messages.push(message);
+        newMessages.push(message);
+        
+        // Add message to receiver's inbox
+        const receiver = updatedNetwork.nodes.find(a => a.id === receiverId);
+        if (receiver) {
+          receiver.receivedMessages.push(message);
+        }
+      }
+    }
+  });
+
+  // Add all new messages to the log
+  updatedNetwork.messageLog = [...updatedNetwork.messageLog, ...newMessages];
+  
+  return updatedNetwork;
 };
 
 /**
@@ -323,12 +496,17 @@ export const createNetwork = (
  * @returns Updated network after one step of belief propagation
  */
 export const runBeliefPropagationStep = (network: Network): Network => {
-  const newNetwork = { 
-    nodes: JSON.parse(JSON.stringify(network.nodes)),
-    links: [...network.links] 
+  // First exchange messages
+  let newNetwork = exchangeMessages(network);
+
+  // Deep clone nodes to avoid reference issues
+  newNetwork = { 
+    nodes: JSON.parse(JSON.stringify(newNetwork.nodes)),
+    links: [...newNetwork.links],
+    messageLog: [...newNetwork.messageLog]
   };
 
-  // For each agent, check neighbors' beliefs
+  // For each agent, check neighbors' beliefs and received messages
   newNetwork.nodes.forEach((agent, index) => {
     const neighbors = agent.neighbors;
     
@@ -343,14 +521,26 @@ export const runBeliefPropagationStep = (network: Network): Network => {
       (neighborId) => network.nodes[neighborId].believer
     ).length;
 
-    // Simple majority rule with susceptibility adjustment
+    // Get recent messages from neighbors
+    const recentMessages = agent.receivedMessages.slice(-5);
+    const believerMessageCount = recentMessages.filter(m => m.belief).length;
+    
+    // Adjust belief threshold based on message content (weighted by agreeableness)
+    const messageInfluence = recentMessages.length > 0 
+      ? (believerMessageCount / recentMessages.length - 0.5) * agent.traits.agreeableness * 0.2
+      : 0;
+
+    // Simple majority rule with susceptibility and message adjustments
     const thresholdBase = 0.5; // Default threshold is 50%
-    const threshold = thresholdBase - (agent.susceptibility || 0) * 0.2;
+    const threshold = thresholdBase - (agent.susceptibility || 0) * 0.2 - messageInfluence;
     const majorityBelieve = believingNeighborsCount / neighbors.length > threshold;
 
     // Update belief
     agent.believer = majorityBelieve;
     agent.beliefHistory.push(majorityBelieve);
+    
+    // Update thought state based on new belief
+    agent.thoughtState = generateThought(agent);
   });
 
   return newNetwork;
@@ -403,7 +593,7 @@ export const generateBeliefHistoryData = (network: Network) => {
 };
 
 /**
- * Generate a CSV export of the simulation results
+ * Generate a CSV export of the simulation results including messages
  * @param network Current network state
  * @returns CSV string of simulation data
  */
@@ -414,6 +604,26 @@ export const generateExportData = (network: Network): string => {
   // Add data for each agent
   network.nodes.forEach((agent) => {
     csv += `${agent.id},${agent.traits.openness.toFixed(3)},${agent.traits.conscientiousness.toFixed(3)},${agent.traits.extraversion.toFixed(3)},${agent.traits.agreeableness.toFixed(3)},${agent.traits.neuroticism.toFixed(3)},${(agent.susceptibility || 0).toFixed(3)},${agent.believer},${agent.neighbors.join("|")},${agent.beliefHistory.map(b => b ? 1 : 0).join("|")}\n`;
+  });
+  
+  return csv;
+};
+
+/**
+ * Generate a CSV export of the message log
+ * @param network Current network state
+ * @returns CSV string of message data
+ */
+export const generateMessageLogExport = (network: Network): string => {
+  // CSV header
+  let csv = "message_id,sender_id,receiver_id,timestamp,belief_state,content\n";
+  
+  // Add data for each message
+  network.messageLog.forEach((message) => {
+    // Escape quotes in content
+    const safeContent = message.content.replace(/"/g, '""');
+    
+    csv += `${message.id},${message.senderId},${message.receiverId || "broadcast"},${message.timestamp},${message.belief ? 1 : 0},"${safeContent}"\n`;
   });
   
   return csv;

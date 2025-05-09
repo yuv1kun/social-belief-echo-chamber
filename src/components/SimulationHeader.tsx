@@ -15,10 +15,11 @@ const SimulationHeader: React.FC = () => {
         <div className="text-sm text-muted-foreground">
           <p className="mb-2">
             This simulation models how beliefs spread through a network of agents, each with a unique psychological profile based on the Big Five personality traits.
+            Agents communicate with each other through messages that reflect their personality and current beliefs.
           </p>
           <p>
             <strong>How to use:</strong> Adjust the simulation parameters, then run the simulation step-by-step or continuously. 
-            Click on an agent in the network visualization to view their details. Export results when done.
+            Click on an agent in the network visualization to view their details, thoughts, and messages. Export results when done.
           </p>
         </div>
       </div>
