@@ -13,6 +13,8 @@ export type BigFiveTraits = {
   neuroticism: number;
 };
 
+export type Gender = "male" | "female";
+
 export type Message = {
   id: string;
   senderId: number;
@@ -24,6 +26,8 @@ export type Message = {
 
 export type Agent = {
   id: number;
+  name: string;
+  gender: Gender;
   traits: BigFiveTraits;
   believer: boolean;
   neighbors: number[];
@@ -47,6 +51,46 @@ export type SimulationConfig = {
   networkType: "random" | "scale-free" | "small-world";
   steps: number;
   currentStep: number;
+};
+
+/**
+ * Lists of Indian names by gender for generating agent names
+ */
+const indianNames = {
+  male: [
+    "Aarav", "Vivaan", "Aditya", "Vihaan", "Arjun", 
+    "Reyansh", "Aryan", "Dhruv", "Krishna", "Atharv",
+    "Ishaan", "Shaurya", "Advait", "Rudra", "Pranav", 
+    "Veer", "Kabir", "Yuvraj", "Arnav", "Aayan",
+    "Siddharth", "Ansh", "Shivansh", "Karan", "Pratham",
+    "Rishi", "Rohan", "Varun", "Rahul", "Soham",
+    "Ayush", "Nikhil", "Tanay", "Jayesh", "Sahil",
+    "Gagan", "Harsh", "Indra", "Nakul", "Praneet",
+    "Rajesh", "Samir", "Vikas", "Deepak", "Manish",
+    "Mukesh", "Sunil", "Vikram", "Akshay", "Dev"
+  ],
+  female: [
+    "Aadhya", "Saanvi", "Aaradhya", "Ananya", "Aanya", 
+    "Pari", "Anika", "Navya", "Diya", "Sara",
+    "Kiara", "Myra", "Ishita", "Ahana", "Angel", 
+    "Avni", "Aditi", "Prisha", "Riya", "Aarohi",
+    "Anvi", "Ritika", "Kashvi", "Tanya", "Khushi",
+    "Divya", "Meera", "Siya", "Amyra", "Nisha",
+    "Kavya", "Neha", "Pooja", "Shruti", "Isha",
+    "Archana", "Deepika", "Kiran", "Lakshmi", "Mira",
+    "Priyanka", "Shreya", "Tanvi", "Usha", "Vaani",
+    "Zara", "Alisha", "Brinda", "Chandni", "Devi"
+  ]
+};
+
+/**
+ * Generate a random Indian name based on gender
+ * @param gender The gender to generate a name for
+ * @returns A random Indian name
+ */
+export const generateRandomIndianName = (gender: Gender): string => {
+  const nameList = indianNames[gender];
+  return nameList[Math.floor(Math.random() * nameList.length)];
 };
 
 /**
@@ -120,7 +164,7 @@ export const generateThought = (agent: Agent): string => {
  * @returns A message object
  */
 export const generateMessage = (agent: Agent, receiverId: number | null = null): Message => {
-  const { traits, believer, id, thoughtState } = agent;
+  const { traits, believer, id, thoughtState, name, gender } = agent;
   const { openness, conscientiousness, extraversion, agreeableness, neuroticism } = traits;
   
   // Base message templates based on belief
@@ -145,6 +189,9 @@ export const generateMessage = (agent: Agent, receiverId: number | null = null):
   let templates = believer ? messageTemplates.believer : messageTemplates.nonBeliever;
   let baseIndex = Math.floor(Math.random() * templates.length);
   let content = templates[baseIndex];
+
+  // Add name to the message
+  content = `${name} says: ${content}`;
 
   // Modify content based on personality traits
   if (agreeableness > 0.7) {
@@ -197,9 +244,13 @@ export const initializeAgents = (
   for (let i = 0; i < count; i++) {
     const traits = generateRandomTraits();
     const susceptibility = calculateSusceptibility(traits);
+    const gender: Gender = Math.random() > 0.5 ? "male" : "female";
+    const name = generateRandomIndianName(gender);
     
     agents.push({
       id: i,
+      name,
+      gender,
       traits,
       believer: false, // Will be set later for some agents
       neighbors: [],
@@ -607,11 +658,11 @@ export const generateBeliefHistoryData = (network: Network) => {
  */
 export const generateExportData = (network: Network): string => {
   // CSV header
-  let csv = "agent_id,openness,conscientiousness,extraversion,agreeableness,neuroticism,susceptibility,final_belief,neighbors,belief_history\n";
+  let csv = "agent_id,name,gender,openness,conscientiousness,extraversion,agreeableness,neuroticism,susceptibility,final_belief,neighbors,belief_history\n";
   
   // Add data for each agent
   network.nodes.forEach((agent) => {
-    csv += `${agent.id},${agent.traits.openness.toFixed(3)},${agent.traits.conscientiousness.toFixed(3)},${agent.traits.extraversion.toFixed(3)},${agent.traits.agreeableness.toFixed(3)},${agent.traits.neuroticism.toFixed(3)},${(agent.susceptibility || 0).toFixed(3)},${agent.believer},${agent.neighbors.join("|")},${agent.beliefHistory.map(b => b ? 1 : 0).join("|")}\n`;
+    csv += `${agent.id},${agent.name},${agent.gender},${agent.traits.openness.toFixed(3)},${agent.traits.conscientiousness.toFixed(3)},${agent.traits.extraversion.toFixed(3)},${agent.traits.agreeableness.toFixed(3)},${agent.traits.neuroticism.toFixed(3)},${(agent.susceptibility || 0).toFixed(3)},${agent.believer},${agent.neighbors.join("|")},${agent.beliefHistory.map(b => b ? 1 : 0).join("|")}\n`;
   });
   
   return csv;
