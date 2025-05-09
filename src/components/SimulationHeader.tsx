@@ -1,6 +1,6 @@
 
 import React from "react";
-import { InfoCircle } from "lucide-react";
+import { Info } from "lucide-react";
 
 const SimulationHeader: React.FC = () => {
   return (
@@ -11,7 +11,7 @@ const SimulationHeader: React.FC = () => {
       </p>
       
       <div className="flex items-start gap-2 mt-4 p-4 bg-muted/30 rounded-lg">
-        <InfoCircle className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+        <Info className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
         <div className="text-sm text-muted-foreground">
           <p className="mb-2">
             This simulation models how beliefs spread through a network of agents, each with a unique psychological profile based on the Big Five personality traits.

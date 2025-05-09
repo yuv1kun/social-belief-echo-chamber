@@ -105,8 +105,9 @@ const NetworkVisualization: React.FC<NetworkVisualizationProps> = ({
 
       // Allow drag and drop
       node.call(
+        // Remove the explicit type argument here
         d3
-          .drag<SVGCircleElement, ForceNode>()
+          .drag()
           .on("start", (event, d) => {
             if (!event.active) simulation.alphaTarget(0.3).restart();
             d.fx = d.x;
