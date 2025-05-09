@@ -44,7 +44,7 @@ export type Network = {
   nodes: Agent[];
   links: { source: number; target: number }[];
   messageLog: Message[];
-  currentTopic?: string; // Current network-wide topic
+  currentTopic: string; // Changed from optional to required
 };
 
 export type SimulationConfig = {
@@ -54,6 +54,22 @@ export type SimulationConfig = {
   networkType: "random" | "scale-free" | "small-world";
   steps: number;
   currentStep: number;
+};
+
+// Adding the missing indianNames variable
+export const indianNames = {
+  male: [
+    "Aarav", "Vivaan", "Aditya", "Vihaan", "Arjun", 
+    "Reyansh", "Ayaan", "Atharva", "Ishaan", "Shaurya", 
+    "Advik", "Rudra", "Kabir", "Dhruv", "Krishna", 
+    "Krish", "Darsh", "Veer", "Aayan", "Yuvan"
+  ],
+  female: [
+    "Aanya", "Aadhya", "Aaradhya", "Saanvi", "Myra", 
+    "Ananya", "Pari", "Siya", "Diya", "Pihu", 
+    "Sara", "Tara", "Aarna", "Riya", "Drishti", 
+    "Kiara", "Navya", "Avni", "Neha", "Vanya"
+  ]
 };
 
 // List of real-world topics for agents to discuss
@@ -436,10 +452,14 @@ export const createRandomNetwork = (
     }
   }
 
+  // Initialize with a random topic
+  const currentTopic = getRandomTopic();
+
   return { 
     nodes, 
     links,
-    messageLog: [] 
+    messageLog: [],
+    currentTopic
   };
 };
 
@@ -503,10 +523,14 @@ export const createScaleFreeNetwork = (
     }
   }
 
+  // Initialize with a random topic
+  const currentTopic = getRandomTopic();
+
   return { 
     nodes, 
     links,
-    messageLog: []
+    messageLog: [],
+    currentTopic
   };
 };
 
@@ -585,10 +609,14 @@ export const createSmallWorldNetwork = (
     }
   }
 
+  // Initialize with a random topic
+  const currentTopic = getRandomTopic();
+
   return { 
     nodes, 
     links,
-    messageLog: []
+    messageLog: [],
+    currentTopic
   };
 };
 
