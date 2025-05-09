@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useCallback } from "react";
 import { toast } from "sonner";
 import SimulationHeader from "@/components/SimulationHeader";
@@ -34,7 +33,11 @@ const Index = () => {
     currentStep: 0,
   });
 
-  const [network, setNetwork] = useState<Network>({ nodes: [], links: [] });
+  const [network, setNetwork] = useState<Network>({ 
+    nodes: [], 
+    links: [],
+    messageLog: [] 
+  });
   const [selectedAgentId, setSelectedAgentId] = useState<number | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);

@@ -266,7 +266,11 @@ export const createRandomNetwork = (
     }
   }
 
-  return { nodes, links };
+  return { 
+    nodes, 
+    links,
+    messageLog: [] 
+  };
 };
 
 /**
@@ -329,7 +333,11 @@ export const createScaleFreeNetwork = (
     }
   }
 
-  return { nodes, links };
+  return { 
+    nodes, 
+    links,
+    messageLog: []
+  };
 };
 
 /**
@@ -407,7 +415,11 @@ export const createSmallWorldNetwork = (
     }
   }
 
-  return { nodes, links };
+  return { 
+    nodes, 
+    links,
+    messageLog: []
+  };
 };
 
 /**
@@ -422,7 +434,7 @@ export const createNetwork = (
   type: "random" | "scale-free" | "small-world",
   density: number
 ): Network => {
-  let result;
+  let result: Network;
   
   switch (type) {
     case "random":
@@ -440,11 +452,7 @@ export const createNetwork = (
       result = createRandomNetwork(agents, density);
   }
   
-  // Initialize empty message log
-  return {
-    ...result,
-    messageLog: []
-  };
+  return result;
 };
 
 /**
