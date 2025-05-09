@@ -1,7 +1,7 @@
 
 import { useState } from "react";
 import { SimulationConfig } from "@/lib/simulation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
@@ -72,6 +72,9 @@ const SimulationControls: React.FC<SimulationControlsProps> = ({
             Step: {config.currentStep}/{config.steps}
           </span>
         </CardTitle>
+        <CardDescription className="text-xs">
+          Each simulation step takes 2 seconds to process
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="space-y-4">
