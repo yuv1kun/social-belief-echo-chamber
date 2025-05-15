@@ -50,7 +50,9 @@ const AgentMessages: React.FC<AgentMessagesProps> = ({
         <CardDescription className="flex flex-col gap-1">
           {currentTopic && (
             <div className="flex items-center gap-2 mb-1">
-              <Badge variant="outline" className="bg-slate-100">Topic: {currentTopic}</Badge>
+              <Badge variant="outline" className="bg-slate-100">
+                <span className="text-black">Topic: {currentTopic}</span>
+              </Badge>
             </div>
           )}
           {messages.length > 0 

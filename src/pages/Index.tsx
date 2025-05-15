@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useCallback } from "react";
 import { toast } from "sonner";
 import SimulationHeader from "@/components/SimulationHeader";
@@ -6,6 +7,7 @@ import SimulationControls from "@/components/SimulationControls";
 import AgentDetails from "@/components/AgentDetails";
 import SimulationStats from "@/components/SimulationStats";
 import NetworkMessages from "@/components/NetworkMessages";
+import AgentSelector from "@/components/AgentSelector";
 import {
   Agent,
   Network,
@@ -234,7 +236,7 @@ const Index = () => {
       <SimulationHeader />
       
       <div className="grid grid-cols-1 md:grid-cols-12 gap-6 mt-6">
-        {/* Left column - Simulation Controls and Agent Details */}
+        {/* Left column - Simulation Controls, Agent Selection and Agent Details */}
         <div className="md:col-span-3 space-y-6">
           <SimulationControls
             config={config}
@@ -246,6 +248,13 @@ const Index = () => {
             onExport={handleExport}
             isRunning={isRunning}
             isComplete={isComplete}
+          />
+          
+          {/* New Agent Selector component */}
+          <AgentSelector
+            agents={network.nodes}
+            selectedAgentId={selectedAgentId}
+            onSelectAgent={handleSelectAgent}
           />
           
           <AgentDetails agent={selectedAgent} />
