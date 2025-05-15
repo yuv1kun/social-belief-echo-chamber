@@ -3,7 +3,7 @@ import React, { useEffect, useRef } from "react";
 import { Network } from "@/lib/simulation";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ShareNodes } from "lucide-react";
+import { Share2 } from "lucide-react";
 
 interface NetworkVisualizationProps {
   network: Network;
@@ -238,7 +238,7 @@ const NetworkVisualization: React.FC<NetworkVisualizationProps> = ({
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="text-lg flex items-center gap-2">
-              <ShareNodes className="h-5 w-5" />
+              <Share2 className="h-5 w-5" />
               Network Visualization
             </CardTitle>
             <CardDescription>
