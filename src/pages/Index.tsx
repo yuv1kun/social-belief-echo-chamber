@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useCallback } from "react";
 import { toast } from "sonner";
 import SimulationHeader from "@/components/SimulationHeader";
@@ -233,22 +234,45 @@ const Index = () => {
     <div className="container py-8">
       <SimulationHeader />
       
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="md:col-span-2 space-y-6">
-          <NetworkVisualization
-            network={network}
-            selectedAgentId={selectedAgentId}
-            onSelectAgent={handleSelectAgent}
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-6 mt-6">
+        {/* Left column - Simulation Controls and Agent Details */}
+        <div className="md:col-span-3 space-y-6">
+          <SimulationControls
+            config={config}
+            onUpdateConfig={handleUpdateConfig}
+            onReset={handleReset}
+            onStep={handleStep}
+            onRunContinuous={handleRunContinuous}
+            onPause={handlePause}
+            onExport={handleExport}
+            isRunning={isRunning}
+            isComplete={isComplete}
           />
           
-          <SimulationStats
-            network={network}
-            historyData={historyData}
-            statistics={statistics}
-          />
+          <AgentDetails agent={selectedAgent} />
+        </div>
+        
+        {/* Center and Right columns - Visualization, Messages, and Stats */}
+        <div className="md:col-span-9 space-y-6">
+          {/* Network visualization and messages side by side */}
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+            {/* Network visualization */}
+            <div className="lg:col-span-3">
+              <NetworkVisualization
+                network={network}
+                selectedAgentId={selectedAgentId}
+                onSelectAgent={handleSelectAgent}
+              />
+            </div>
+            
+            {/* Network messages (desktop) */}
+            <div className="lg:col-span-2 hidden lg:block">
+              <NetworkMessages network={network} />
+            </div>
+          </div>
           
           {/* Mobile-only sheet for messages */}
-          <div className="md:hidden">
+          <div className="lg:hidden">
             <Sheet>
               <SheetTrigger asChild>
                 <Button className="w-full gap-2">
@@ -264,26 +288,12 @@ const Index = () => {
             </Sheet>
           </div>
           
-          {/* Desktop-only message display */}
-          <div className="hidden md:block">
-            <NetworkMessages network={network} />
-          </div>
-        </div>
-        
-        <div className="space-y-6">
-          <SimulationControls
-            config={config}
-            onUpdateConfig={handleUpdateConfig}
-            onReset={handleReset}
-            onStep={handleStep}
-            onRunContinuous={handleRunContinuous}
-            onPause={handlePause}
-            onExport={handleExport}
-            isRunning={isRunning}
-            isComplete={isComplete}
+          {/* Statistics */}
+          <SimulationStats
+            network={network}
+            historyData={historyData}
+            statistics={statistics}
           />
-          
-          <AgentDetails agent={selectedAgent} />
         </div>
       </div>
     </div>
