@@ -36,22 +36,26 @@ const NetworkMessages: React.FC<NetworkMessagesProps> = ({ network }) => {
       // Clear old typing indicators
       setTypingAgents([]);
       
-      // Create new typing indicators for new messages
-      const newTypingIndicators: TypingIndicator[] = newMessages.map(msg => ({
-        agentId: msg.senderId,
-        startTime: Date.now(),
-        duration: Math.random() * 1500 + 500 // Random typing time between 0.5-2 seconds
-      }));
-      
-      setTypingAgents(newTypingIndicators);
-      
-      // Gradually reveal messages as typing completes
-      newMessages.forEach((message, index) => {
-        const typingTime = newTypingIndicators[index].duration;
+      // Process new messages with consistent timing
+      const processNextMessage = (index: number) => {
+        if (index >= newMessages.length) return;
         
+        const message = newMessages[index];
+        
+        // Add typing indicator
+        setTypingAgents(current => [
+          ...current, 
+          { 
+            agentId: message.senderId,
+            startTime: Date.now(),
+            duration: 5000 // Fixed 5 seconds typing time
+          }
+        ]);
+        
+        // After 5 seconds, reveal the message and remove typing indicator
         setTimeout(() => {
           setTypingAgents(current => 
-            current.filter(t => t.agentId !== message.senderId)
+            current.filter(t => t.agentId !== message.senderId || t.startTime !== current.find(i => i.agentId === message.senderId)?.startTime)
           );
           
           setVisibleMessages(current => {
@@ -61,8 +65,14 @@ const NetworkMessages: React.FC<NetworkMessagesProps> = ({ network }) => {
             }
             return [...current, message];
           });
-        }, typingTime);
-      });
+          
+          // Process next message
+          processNextMessage(index + 1);
+        }, 5000); // 5 seconds between messages
+      };
+      
+      // Start processing the first message
+      processNextMessage(0);
     }
     
     // When network messages change completely (new simulation), reset visible messages

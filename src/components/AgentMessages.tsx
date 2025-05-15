@@ -105,7 +105,7 @@ const AgentMessages: React.FC<AgentMessagesProps> = ({
                 </div>
               ))}
               
-              {/* Typing indicators */}
+              {/* Typing indicators with smooth animations */}
               {typingAgents.map((typing) => (
                 <div 
                   key={`typing-${typing.agentId}-${typing.startTime}`}
