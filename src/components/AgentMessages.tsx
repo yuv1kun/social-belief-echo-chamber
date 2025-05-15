@@ -111,8 +111,12 @@ const AgentMessages: React.FC<AgentMessagesProps> = ({
                   key={`typing-${typing.agentId}-${typing.startTime}`}
                   className="flex flex-col space-y-1 border-l-2 pl-4 border-muted-foreground/20 rounded p-2 max-w-[85%] animate-fade-in"
                 >
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-medium">Agent #{typing.agentId}</span>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-medium">Agent #{typing.agentId}</span>
+                      <span className="text-xs text-muted-foreground">typing...</span>
+                    </div>
+                    <span className="text-xs text-muted-foreground">{formatTime(Date.now())}</span>
                   </div>
                   <div className="flex items-center gap-1 h-6">
                     <span className="w-2 h-2 bg-muted-foreground/60 rounded-full animate-pulse"></span>

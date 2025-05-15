@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useCallback } from "react";
 import { toast } from "sonner";
 import SimulationHeader from "@/components/SimulationHeader";
@@ -278,7 +279,7 @@ const Index = () => {
             
             {/* Network messages (desktop) */}
             <div className="lg:col-span-2 hidden lg:block">
-              <NetworkMessages network={network} />
+              <NetworkMessages network={network} isRunning={isRunning} />
             </div>
           </div>
           
@@ -293,7 +294,7 @@ const Index = () => {
               </SheetTrigger>
               <SheetContent side="bottom" className="h-[80vh]">
                 <div className="py-6">
-                  <NetworkMessages network={network} />
+                  <NetworkMessages network={network} isRunning={isRunning} />
                 </div>
               </SheetContent>
             </Sheet>
