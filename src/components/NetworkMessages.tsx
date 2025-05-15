@@ -7,18 +7,11 @@ import { MessageCircle } from "lucide-react";
 
 interface NetworkMessagesProps {
   network: Network;
-  isRunning: boolean; // Added isRunning prop to control message processing
-}
-
-interface TypingIndicator {
-  agentId: number;
-  startTime: number;
-  duration: number;
+  isRunning: boolean;
 }
 
 const NetworkMessages: React.FC<NetworkMessagesProps> = ({ network, isRunning }) => {
   const [activeTab, setActiveTab] = useState<"all" | "recent">("all");
-  const [typingAgents, setTypingAgents] = useState<TypingIndicator[]>([]);
   const [visibleMessages, setVisibleMessages] = useState<Message[]>([]);
   const [processedCount, setProcessedCount] = useState<number>(0);
   const messageProcessorRef = useRef<NodeJS.Timeout | null>(null);
@@ -34,7 +27,6 @@ const NetworkMessages: React.FC<NetworkMessagesProps> = ({ network, isRunning })
     if (network.messageLog.length === 0) {
       setVisibleMessages([]);
       setProcessedCount(0);
-      setTypingAgents([]);
       
       if (messageProcessorRef.current) {
         clearTimeout(messageProcessorRef.current);
@@ -43,9 +35,8 @@ const NetworkMessages: React.FC<NetworkMessagesProps> = ({ network, isRunning })
     }
   }, [network.messageLog.length]);
   
-  // Effect to manage typing indicators and gradual message revealing
+  // Clean up on unmount
   useEffect(() => {
-    // Clear any existing timeout when the component unmounts or dependencies change
     return () => {
       if (messageProcessorRef.current) {
         clearTimeout(messageProcessorRef.current);
@@ -79,23 +70,9 @@ const NetworkMessages: React.FC<NetworkMessagesProps> = ({ network, isRunning })
         
         if (!message) return; // Exit if no message to process
         
-        // Add typing indicator for this message
-        setTypingAgents(current => [
-          ...current, 
-          { 
-            agentId: message.senderId,
-            startTime: Date.now(),
-            duration: 5000 // Fixed 5 seconds typing time
-          }
-        ]);
-        
-        // After 5 seconds, reveal the message and remove typing indicator
+        // After 5 seconds, reveal the message
         messageProcessorRef.current = setTimeout(() => {
           if (!isRunning) return; // Don't update state if simulation is stopped
-          
-          setTypingAgents(current => 
-            current.filter(t => t.agentId !== message.senderId || t.startTime !== current.find(i => i.agentId === message.senderId)?.startTime)
-          );
           
           setVisibleMessages(current => {
             // Find if this message is already there
@@ -125,7 +102,6 @@ const NetworkMessages: React.FC<NetworkMessagesProps> = ({ network, isRunning })
          currentTabMessages[0].id !== visibleMessages[0]?.id)) {
       setVisibleMessages([]);
       setProcessedCount(0);
-      setTypingAgents([]);
     }
   }, [allMessages, recentMessages, activeTab, isRunning, processedCount]);
   
@@ -146,7 +122,6 @@ const NetworkMessages: React.FC<NetworkMessagesProps> = ({ network, isRunning })
             messages={visibleMessages}
             allAgents 
             currentTopic={network.currentTopic}
-            typingAgents={typingAgents}
           />
         </TabsContent>
         <TabsContent value="recent" className="pt-4">
@@ -154,7 +129,6 @@ const NetworkMessages: React.FC<NetworkMessagesProps> = ({ network, isRunning })
             messages={visibleMessages.slice(-20)} 
             allAgents 
             currentTopic={network.currentTopic}
-            typingAgents={typingAgents}
           />
         </TabsContent>
       </Tabs>

@@ -12,26 +12,18 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { MessageCircle } from "lucide-react";
 
-interface TypingIndicator {
-  agentId: number;
-  startTime: number;
-  duration: number;
-}
-
 interface AgentMessagesProps {
   messages: Message[];
   agentId?: number;
   allAgents?: boolean;
   currentTopic?: string;
-  typingAgents?: TypingIndicator[];
 }
 
 const AgentMessages: React.FC<AgentMessagesProps> = ({ 
   messages, 
   agentId, 
   allAgents = false,
-  currentTopic,
-  typingAgents = []
+  currentTopic
 }) => {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   
@@ -54,7 +46,7 @@ const AgentMessages: React.FC<AgentMessagesProps> = ({
         scrollContainer.scrollTop = scrollContainer.scrollHeight;
       }
     }
-  }, [messages, typingAgents]);
+  }, [messages]);
 
   return (
     <Card className="w-full">
@@ -78,7 +70,7 @@ const AgentMessages: React.FC<AgentMessagesProps> = ({
       </CardHeader>
       <CardContent>
         <ScrollArea className="h-[250px] pr-4" ref={scrollAreaRef}>
-          {sortedMessages.length > 0 || typingAgents.length > 0 ? (
+          {sortedMessages.length > 0 ? (
             <div className="space-y-4 pb-2">
               {sortedMessages.map((message) => (
                 <div 
@@ -102,27 +94,6 @@ const AgentMessages: React.FC<AgentMessagesProps> = ({
                     <span className="text-xs text-muted-foreground">{formatTime(message.timestamp)}</span>
                   </div>
                   <p className="text-sm font-medium break-words">{message.content}</p>
-                </div>
-              ))}
-              
-              {/* Typing indicators with smooth animations */}
-              {typingAgents.map((typing) => (
-                <div 
-                  key={`typing-${typing.agentId}-${typing.startTime}`}
-                  className="flex flex-col space-y-1 border-l-2 pl-4 border-muted-foreground/20 rounded p-2 max-w-[85%] animate-fade-in"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-medium">Agent #{typing.agentId}</span>
-                      <span className="text-xs text-muted-foreground">typing...</span>
-                    </div>
-                    <span className="text-xs text-muted-foreground">{formatTime(Date.now())}</span>
-                  </div>
-                  <div className="flex items-center gap-1 h-6">
-                    <span className="w-2 h-2 bg-muted-foreground/60 rounded-full animate-pulse"></span>
-                    <span className="w-2 h-2 bg-muted-foreground/60 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></span>
-                    <span className="w-2 h-2 bg-muted-foreground/60 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></span>
-                  </div>
                 </div>
               ))}
             </div>
