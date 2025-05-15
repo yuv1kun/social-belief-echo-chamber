@@ -87,7 +87,8 @@ const AgentMessages: React.FC<AgentMessagesProps> = ({
                           <>To {message.receiverId !== null ? `Agent #${message.receiverId}` : "Everyone"}</>
                         )}
                       </span>
-                      <Badge variant={message.belief ? "default" : "secondary"} className="text-xs">
+                      {/* Ensure Badge doesn't wrap text */}
+                      <Badge variant={message.belief ? "default" : "secondary"} className="text-xs inline-flex items-center">
                         {message.belief ? "Believer" : "Skeptic"}
                       </Badge>
                     </div>

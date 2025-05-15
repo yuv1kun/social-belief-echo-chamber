@@ -13,8 +13,8 @@ interface NetworkMessagesProps {
 const NetworkMessages: React.FC<NetworkMessagesProps> = ({ network, isRunning }) => {
   const [activeTab, setActiveTab] = useState<"all" | "recent">("all");
   const [visibleMessages, setVisibleMessages] = useState<Message[]>([]);
-  const [processedCount, setProcessedCount] = useState<number>(0);
-  const messageProcessorRef = useRef<NodeJS.Timeout | null>(null);
+  const messageTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const lastMessageCountRef = useRef<number>(0);
   
   // Get all messages from the network log
   const allMessages = network.messageLog;
@@ -22,15 +22,15 @@ const NetworkMessages: React.FC<NetworkMessagesProps> = ({ network, isRunning })
   // Get only the most recent messages (last 20)
   const recentMessages = network.messageLog.slice(-20);
   
-  // Reset messages when simulation is reset
+  // Reset when simulation resets
   useEffect(() => {
     if (network.messageLog.length === 0) {
       setVisibleMessages([]);
-      setProcessedCount(0);
+      lastMessageCountRef.current = 0;
       
-      if (messageProcessorRef.current) {
-        clearTimeout(messageProcessorRef.current);
-        messageProcessorRef.current = null;
+      if (messageTimerRef.current) {
+        clearTimeout(messageTimerRef.current);
+        messageTimerRef.current = null;
       }
     }
   }, [network.messageLog.length]);
@@ -38,95 +38,90 @@ const NetworkMessages: React.FC<NetworkMessagesProps> = ({ network, isRunning })
   // Clean up on unmount
   useEffect(() => {
     return () => {
-      if (messageProcessorRef.current) {
-        clearTimeout(messageProcessorRef.current);
-        messageProcessorRef.current = null;
+      if (messageTimerRef.current) {
+        clearTimeout(messageTimerRef.current);
+        messageTimerRef.current = null;
       }
     };
   }, []);
   
-  // Process messages only when simulation is running
+  // Process messages with 5-second intervals when simulation is running
   useEffect(() => {
-    const currentTabMessages = activeTab === "all" ? allMessages : recentMessages;
+    const messages = activeTab === "all" ? allMessages : recentMessages;
     
-    // Stop processing messages if simulation is paused
+    // Clear any existing timer when simulation pauses
     if (!isRunning) {
-      if (messageProcessorRef.current) {
-        clearTimeout(messageProcessorRef.current);
-        messageProcessorRef.current = null;
+      if (messageTimerRef.current) {
+        clearTimeout(messageTimerRef.current);
+        messageTimerRef.current = null;
       }
       return;
     }
     
-    // Get messages that still need to be processed
-    const unprocessedMessages = currentTabMessages.slice(processedCount);
+    // Reset message display if network has changed completely
+    if (allMessages.length > 0 && lastMessageCountRef.current === 0) {
+      setVisibleMessages([]);
+    }
     
-    if (unprocessedMessages.length > 0) {
-      // Process one message at a time
-      const processNextMessage = () => {
-        if (!isRunning) return; // Exit if simulation is stopped
-        
-        const message = unprocessedMessages[0];
-        
-        if (!message) return; // Exit if no message to process
-        
-        // After 5 seconds, reveal the message
-        messageProcessorRef.current = setTimeout(() => {
-          if (!isRunning) return; // Don't update state if simulation is stopped
-          
-          setVisibleMessages(current => {
-            // Find if this message is already there
-            if (current.find(m => m.id === message.id)) {
-              return current;
-            }
-            return [...current, message];
-          });
-          
-          // Update processed count
-          setProcessedCount(current => current + 1);
-          
-          // Process next message in the queue
-          if (unprocessedMessages.length > 1) {
-            processNextMessage();
-          }
-        }, 5000); // Exactly 5 seconds between messages
-      };
+    // Process new messages that haven't been shown yet
+    const processNextMessage = () => {
+      if (!isRunning) return; // Don't continue if simulation stopped
       
-      // Start processing the first message
+      const nextMessageIndex = lastMessageCountRef.current;
+      
+      if (nextMessageIndex < messages.length) {
+        const nextMessage = messages[nextMessageIndex];
+        
+        // Add next message to visible messages
+        setVisibleMessages(prev => [...prev, nextMessage]);
+        lastMessageCountRef.current = nextMessageIndex + 1;
+        
+        // Schedule next message after 5 seconds
+        messageTimerRef.current = setTimeout(() => {
+          processNextMessage();
+        }, 5000);
+      }
+    };
+    
+    // Start processing if there are unprocessed messages and no timer running
+    if (lastMessageCountRef.current < messages.length && !messageTimerRef.current) {
       processNextMessage();
     }
     
-    // When network changes completely (new simulation), reset visible messages
-    if (currentTabMessages.length > 0 && 
-        (visibleMessages.length === 0 || 
-         currentTabMessages[0].id !== visibleMessages[0]?.id)) {
-      setVisibleMessages([]);
-      setProcessedCount(0);
+  }, [allMessages, recentMessages, activeTab, isRunning]);
+  
+  // When switching tabs, reset the message display
+  const handleTabChange = (value: string) => {
+    setActiveTab(value as "all" | "recent");
+    // Reset message processing for the new tab
+    lastMessageCountRef.current = 0;
+    setVisibleMessages([]);
+    
+    if (messageTimerRef.current) {
+      clearTimeout(messageTimerRef.current);
+      messageTimerRef.current = null;
     }
-  }, [allMessages, recentMessages, activeTab, isRunning, processedCount]);
+  };
+  
+  const currentMessages = activeTab === "all" ? visibleMessages : visibleMessages.slice(-20);
   
   return (
     <div className="space-y-4">
-      <Tabs defaultValue="all" onValueChange={(value) => {
-        setActiveTab(value as "all" | "recent");
-        // Reset message processing when changing tabs
-        setProcessedCount(0);
-        setVisibleMessages([]);
-      }}>
+      <Tabs defaultValue="all" onValueChange={handleTabChange}>
         <TabsList className="grid grid-cols-2 w-full">
           <TabsTrigger value="all">All Messages</TabsTrigger>
           <TabsTrigger value="recent">Recent Messages</TabsTrigger>
         </TabsList>
         <TabsContent value="all" className="pt-4">
           <AgentMessages 
-            messages={visibleMessages}
+            messages={currentMessages}
             allAgents 
             currentTopic={network.currentTopic}
           />
         </TabsContent>
         <TabsContent value="recent" className="pt-4">
           <AgentMessages 
-            messages={visibleMessages.slice(-20)} 
+            messages={currentMessages.slice(-20)} 
             allAgents 
             currentTopic={network.currentTopic}
           />
