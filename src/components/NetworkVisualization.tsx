@@ -244,7 +244,7 @@ const NetworkVisualization: React.FC<NetworkVisualizationProps> = ({
             <CardDescription>
               {network.currentTopic && (
                 <Badge variant="outline" className="bg-slate-100 mt-2">
-                  Topic: {network.currentTopic}
+                  <span className="text-black">Topic: {network.currentTopic}</span>
                 </Badge>
               )}
             </CardDescription>
