@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useCallback } from "react";
 import { toast } from "sonner";
 import SimulationHeader from "@/components/SimulationHeader";
@@ -24,8 +23,8 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { MessageCircle } from "lucide-react";
 
-// Simulation step interval in milliseconds (2 seconds)
-const STEP_INTERVAL = 2000;
+// Simulation step interval in milliseconds (5 seconds)
+const STEP_INTERVAL = 5000;
 
 const Index = () => {
   // Simulation state
@@ -153,7 +152,7 @@ const Index = () => {
     setIsRunning(true);
     const interval = window.setInterval(() => {
       handleStep();
-    }, STEP_INTERVAL); // Using the constant for 2-second interval
+    }, STEP_INTERVAL); // Using the constant for 5-second interval
     setRunInterval(interval);
   }, [handleStep]);
 

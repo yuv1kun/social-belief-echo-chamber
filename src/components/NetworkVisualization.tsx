@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef } from "react";
 import { Network } from "@/lib/simulation";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
@@ -173,8 +172,15 @@ const NetworkVisualization: React.FC<NetworkVisualizationProps> = ({
       // Add titles for tooltip effect
       node.append("title").text((d) => `Agent #${d.id} (${d.believer ? "Believer" : "Non-Believer"})`);
 
-      // Update the positions on each tick
+      // Update the positions on each tick and ensure nodes stay within bounds
       simulation.on("tick", () => {
+        // Keep nodes within bounds
+        nodes.forEach(function(d) {
+          // Keep a 10px padding from edges
+          d.x = Math.max(10, Math.min(width - 10, d.x || width/2));
+          d.y = Math.max(10, Math.min(height - 10, d.y || height/2));
+        });
+
         link
           .attr("x1", (d: any) => d.source.x)
           .attr("y1", (d: any) => d.source.y)
@@ -198,8 +204,9 @@ const NetworkVisualization: React.FC<NetworkVisualizationProps> = ({
             d.fy = d.y;
           })
           .on("drag", (event, d) => {
-            d.fx = event.x;
-            d.fy = event.y;
+            // Ensure dragged nodes stay within bounds
+            d.fx = Math.max(10, Math.min(width - 10, event.x));
+            d.fy = Math.max(10, Math.min(height - 10, event.y));
           })
           .on("end", (event, d) => {
             if (!event.active) simulation.alphaTarget(0);
