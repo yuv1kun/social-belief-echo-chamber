@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useCallback } from "react";
 import { toast } from "sonner";
 import SimulationHeader from "@/components/SimulationHeader";
@@ -62,6 +61,10 @@ const Index = () => {
   // Initialize simulation
   const initializeSimulation = useCallback(() => {
     try {
+      // Generate a single topic for this simulation run
+      const simulationTopic = getRandomTopic();
+      toast.info(`New discussion topic: ${simulationTopic}`);
+      
       // Create agents
       const agents = initializeAgents(
         config.agentCount,
@@ -176,7 +179,7 @@ const Index = () => {
       setRunInterval(null);
     }
     initializeSimulation();
-    toast.success("Simulation reset");
+    toast.success("Simulation reset with a new discussion topic");
   }, [initializeSimulation, runInterval]);
 
   // Handle updating simulation configuration
@@ -250,7 +253,7 @@ const Index = () => {
             isComplete={isComplete}
           />
           
-          {/* New Agent Selector component */}
+          {/* Agent Selector component */}
           <AgentSelector
             agents={network.nodes}
             selectedAgentId={selectedAgentId}

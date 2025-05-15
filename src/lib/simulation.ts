@@ -375,6 +375,9 @@ export const initializeAgents = (
   initialBelieverPercentage: number
 ): Agent[] => {
   const agents: Agent[] = [];
+  
+  // Generate a single topic for this simulation run
+  const simulationTopic = getRandomTopic();
 
   for (let i = 0; i < count; i++) {
     const traits = generateRandomTraits();
@@ -392,7 +395,8 @@ export const initializeAgents = (
       beliefHistory: [],
       susceptibility,
       messages: [],
-      receivedMessages: []
+      receivedMessages: [],
+      currentTopic: simulationTopic // Set the same topic for all agents
     });
   }
 
@@ -452,8 +456,8 @@ export const createRandomNetwork = (
     }
   }
 
-  // Initialize with a random topic
-  const currentTopic = getRandomTopic();
+  // Get the topic from the first agent (all agents have the same topic in a run)
+  const currentTopic = agents[0]?.currentTopic || getRandomTopic();
 
   return { 
     nodes, 
@@ -523,8 +527,8 @@ export const createScaleFreeNetwork = (
     }
   }
 
-  // Initialize with a random topic
-  const currentTopic = getRandomTopic();
+  // Get the topic from the first agent (all agents have the same topic in a run)
+  const currentTopic = agents[0]?.currentTopic || getRandomTopic();
 
   return { 
     nodes, 
@@ -609,8 +613,8 @@ export const createSmallWorldNetwork = (
     }
   }
 
-  // Initialize with a random topic
-  const currentTopic = getRandomTopic();
+  // Get the topic from the first agent (all agents have the same topic in a run)
+  const currentTopic = agents[0]?.currentTopic || getRandomTopic();
 
   return { 
     nodes, 
@@ -702,8 +706,8 @@ export const exchangeMessages = (network: Network): Network => {
  * @returns Updated network after one step of belief propagation
  */
 export const runBeliefPropagationStep = (network: Network): Network => {
-  // Assign a new random topic for this simulation step
-  const currentTopic = getRandomTopic();
+  // Use the same topic throughout the simulation run
+  const currentTopic = network.currentTopic;
   
   // Deep clone network to avoid reference issues
   let newNetwork = { 
@@ -714,12 +718,12 @@ export const runBeliefPropagationStep = (network: Network): Network => {
     messageLog: [...network.messageLog]
   };
   
-  // Assign the topic to each agent
+  // Ensure all agents have the same topic
   newNetwork.nodes.forEach(agent => {
     agent.currentTopic = currentTopic;
   });
 
-  // Exchange messages with the new topic
+  // Exchange messages with the consistent topic
   newNetwork = exchangeMessages(newNetwork);
 
   // For each agent, check neighbors' beliefs and received messages
