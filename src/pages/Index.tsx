@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useCallback } from "react";
 import { toast } from "sonner";
 import SimulationHeader from "@/components/SimulationHeader";
@@ -18,6 +17,7 @@ import {
   generateExportData,
   initializeAgents,
   runBeliefPropagationStep,
+  getRandomTopic,
 } from "@/lib/simulation";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -40,7 +40,8 @@ const Index = () => {
   const [network, setNetwork] = useState<Network>({ 
     nodes: [], 
     links: [],
-    messageLog: [] 
+    messageLog: [],
+    currentTopic: getRandomTopic() // Add the required currentTopic property with a random topic
   });
   const [selectedAgentId, setSelectedAgentId] = useState<number | null>(null);
   const [isRunning, setIsRunning] = useState(false);
