@@ -8,6 +8,7 @@ import AgentDetails from "@/components/AgentDetails";
 import SimulationStats from "@/components/SimulationStats";
 import NetworkMessages from "@/components/NetworkMessages";
 import AgentSelector from "@/components/AgentSelector";
+import ElevenLabsSettings from "@/components/ElevenLabsSettings";
 import {
   Agent,
   Network,
@@ -23,8 +24,8 @@ import {
 } from "@/lib/simulation";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { MessageCircle } from "lucide-react";
-import { initializeVoices, cancelSpeech } from "@/lib/speech";
+import { MessageCircle, Settings } from "lucide-react";
+import { initializeTTS, cancelSpeech, getApiKey } from "@/lib/elevenLabsSpeech";
 
 // Simulation step interval in milliseconds (5 seconds)
 const STEP_INTERVAL = 5000;
@@ -44,13 +45,14 @@ const Index = () => {
     nodes: [], 
     links: [],
     messageLog: [],
-    currentTopic: getRandomTopic() // Add the required currentTopic property with a random topic
+    currentTopic: getRandomTopic()
   });
   const [selectedAgentId, setSelectedAgentId] = useState<number | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
   const [runInterval, setRunInterval] = useState<number | null>(null);
   const [historyData, setHistoryData] = useState<any[]>([]);
+  const [showSettings, setShowSettings] = useState(false);
   const [statistics, setStatistics] = useState({
     totalAgents: 0,
     believers: 0,
@@ -111,10 +113,16 @@ const Index = () => {
     }
   }, [config.agentCount, config.initialBelieverPercentage, config.networkDensity, config.networkType]);
 
-  // Initialize voices and simulation on first load
+  // Initialize TTS and simulation on first load
   useEffect(() => {
-    initializeVoices();
+    initializeTTS();
     initializeSimulation();
+    
+    // Check if ElevenLabs API key is set
+    if (!getApiKey()) {
+      // Show settings on first load if no API key is set
+      setShowSettings(true);
+    }
   }, [initializeSimulation]);
 
   // Handle simulation step
@@ -171,7 +179,7 @@ const Index = () => {
     setIsRunning(true);
     const interval = window.setInterval(() => {
       handleStep();
-    }, STEP_INTERVAL); // Using the constant for 5-second interval
+    }, STEP_INTERVAL);
     setRunInterval(interval);
   }, [handleStep]);
 
@@ -269,6 +277,21 @@ const Index = () => {
             isRunning={isRunning}
             isComplete={isComplete}
           />
+          
+          {/* Settings button */}
+          <Button
+            variant="outline"
+            className="w-full flex gap-2 items-center"
+            onClick={() => setShowSettings(!showSettings)}
+          >
+            <Settings className="h-4 w-4" />
+            {showSettings ? 'Hide Voice Settings' : 'Show Voice Settings'}
+          </Button>
+          
+          {/* ElevenLabs Settings */}
+          {showSettings && (
+            <ElevenLabsSettings />
+          )}
           
           {/* Agent Selector component */}
           <AgentSelector

@@ -4,7 +4,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AgentMessages from "./AgentMessages";
 import { Network, Message } from "@/lib/simulation";
 import { MessageCircle } from "lucide-react";
-import { queueSpeech, cancelSpeech, initializeVoices } from "@/lib/speech";
+import { queueSpeech, cancelSpeech, initializeTTS, getApiKey } from "@/lib/elevenLabsSpeech";
+import { toast } from "sonner";
 
 interface NetworkMessagesProps {
   network: Network;
@@ -17,6 +18,7 @@ const NetworkMessages: React.FC<NetworkMessagesProps> = ({ network, isRunning })
   const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
   const messageTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastMessageCountRef = useRef<number>(0);
+  const processingRef = useRef<boolean>(false);
   
   // Get all messages from the network log
   const allMessages = network.messageLog;
@@ -24,9 +26,9 @@ const NetworkMessages: React.FC<NetworkMessagesProps> = ({ network, isRunning })
   // Get only the most recent messages (last 20)
   const recentMessages = network.messageLog.slice(-20);
 
-  // Initialize speech voices when component mounts
+  // Initialize TTS when component mounts
   useEffect(() => {
-    initializeVoices();
+    initializeTTS();
   }, []);
   
   // Reset when simulation resets
@@ -34,6 +36,7 @@ const NetworkMessages: React.FC<NetworkMessagesProps> = ({ network, isRunning })
     if (network.messageLog.length === 0) {
       setVisibleMessages([]);
       lastMessageCountRef.current = 0;
+      processingRef.current = false;
       cancelSpeech();
       
       if (messageTimerRef.current) {
@@ -64,6 +67,7 @@ const NetworkMessages: React.FC<NetworkMessagesProps> = ({ network, isRunning })
         clearTimeout(messageTimerRef.current);
         messageTimerRef.current = null;
       }
+      processingRef.current = false;
       return;
     }
     
@@ -74,11 +78,12 @@ const NetworkMessages: React.FC<NetworkMessagesProps> = ({ network, isRunning })
     
     // Process new messages that haven't been shown yet
     const processNextMessage = () => {
-      if (!isRunning) return; // Don't continue if simulation stopped
+      if (!isRunning || processingRef.current) return; // Don't continue if simulation stopped or already processing
       
       const nextMessageIndex = lastMessageCountRef.current;
       
       if (nextMessageIndex < messages.length) {
+        processingRef.current = true;
         const nextMessage = messages[nextMessageIndex];
         
         // Add next message to visible messages
@@ -89,6 +94,19 @@ const NetworkMessages: React.FC<NetworkMessagesProps> = ({ network, isRunning })
         const agent = network.nodes.find(a => a.id === nextMessage.senderId);
         const gender = agent?.gender || 'male';
         
+        // Check if ElevenLabs API key is set
+        if (!getApiKey()) {
+          toast.warning("ElevenLabs API key not set. Using browser speech instead.");
+          processingRef.current = false;
+          
+          // Schedule next message immediately without speech
+          messageTimerRef.current = setTimeout(() => {
+            processNextMessage();
+          }, 1000); // Short delay between messages
+          
+          return;
+        }
+        
         // Queue speech for this message
         queueSpeech(
           nextMessage.content, 
@@ -96,6 +114,7 @@ const NetworkMessages: React.FC<NetworkMessagesProps> = ({ network, isRunning })
           () => setSpeakingMessageId(nextMessage.id),
           () => {
             setSpeakingMessageId(null);
+            processingRef.current = false;
             // Schedule next message after speech is complete
             messageTimerRef.current = setTimeout(() => {
               processNextMessage();
@@ -106,7 +125,7 @@ const NetworkMessages: React.FC<NetworkMessagesProps> = ({ network, isRunning })
     };
     
     // Start processing if there are unprocessed messages and no timer running
-    if (lastMessageCountRef.current < messages.length && !messageTimerRef.current) {
+    if (lastMessageCountRef.current < messages.length && !messageTimerRef.current && !processingRef.current) {
       processNextMessage();
     }
     
@@ -119,6 +138,7 @@ const NetworkMessages: React.FC<NetworkMessagesProps> = ({ network, isRunning })
     lastMessageCountRef.current = 0;
     setVisibleMessages([]);
     cancelSpeech();
+    processingRef.current = false;
     
     if (messageTimerRef.current) {
       clearTimeout(messageTimerRef.current);
