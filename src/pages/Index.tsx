@@ -53,6 +53,7 @@ const Index = () => {
   const [runInterval, setRunInterval] = useState<number | null>(null);
   const [historyData, setHistoryData] = useState<any[]>([]);
   const [showSettings, setShowSettings] = useState(false);
+  const [isProcessingMessage, setIsProcessingMessage] = useState(false); // New state for tracking message processing
   const [statistics, setStatistics] = useState({
     totalAgents: 0,
     believers: 0,
@@ -137,6 +138,11 @@ const Index = () => {
       return;
     }
 
+    // Skip if we're currently processing a message
+    if (isProcessingMessage) {
+      return;
+    }
+
     try {
       // Run one step of belief propagation
       const updatedNetwork = runBeliefPropagationStep(network);
@@ -172,7 +178,7 @@ const Index = () => {
         setRunInterval(null);
       }
     }
-  }, [config, network, runInterval, selectedAgentId]);
+  }, [config, network, runInterval, selectedAgentId, isProcessingMessage]);
 
   // Handle running the simulation continuously
   const handleRunContinuous = useCallback(() => {
@@ -251,6 +257,11 @@ const Index = () => {
     }
   }, [network]);
 
+  // Handle message processing status changes
+  const handleMessageProcessing = useCallback((isProcessing: boolean) => {
+    setIsProcessingMessage(isProcessing);
+  }, []);
+
   // Get the selected agent
   const selectedAgent =
     selectedAgentId !== null
@@ -276,6 +287,7 @@ const Index = () => {
             onExport={handleExport}
             isRunning={isRunning}
             isComplete={isComplete}
+            isProcessing={isProcessingMessage} // Pass processing state to disable controls
           />
           
           {/* Settings button */}
@@ -318,7 +330,11 @@ const Index = () => {
             
             {/* Network messages (desktop) */}
             <div className="lg:col-span-2 hidden lg:block">
-              <NetworkMessages network={network} isRunning={isRunning} />
+              <NetworkMessages 
+                network={network} 
+                isRunning={isRunning} 
+                onProcessingMessage={handleMessageProcessing}
+              />
             </div>
           </div>
           
@@ -333,7 +349,11 @@ const Index = () => {
               </SheetTrigger>
               <SheetContent side="bottom" className="h-[80vh]">
                 <div className="py-6">
-                  <NetworkMessages network={network} isRunning={isRunning} />
+                  <NetworkMessages 
+                    network={network} 
+                    isRunning={isRunning}
+                    onProcessingMessage={handleMessageProcessing}
+                  />
                 </div>
               </SheetContent>
             </Sheet>

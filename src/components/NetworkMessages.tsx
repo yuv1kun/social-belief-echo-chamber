@@ -10,9 +10,14 @@ import { toast } from "sonner";
 interface NetworkMessagesProps {
   network: Network;
   isRunning: boolean;
+  onProcessingMessage?: (isProcessing: boolean) => void;
 }
 
-const NetworkMessages: React.FC<NetworkMessagesProps> = ({ network, isRunning }) => {
+const NetworkMessages: React.FC<NetworkMessagesProps> = ({ 
+  network, 
+  isRunning,
+  onProcessingMessage 
+}) => {
   const [activeTab, setActiveTab] = useState<"all" | "recent">("all");
   const [visibleMessages, setVisibleMessages] = useState<Message[]>([]);
   const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
@@ -43,8 +48,13 @@ const NetworkMessages: React.FC<NetworkMessagesProps> = ({ network, isRunning })
         clearTimeout(messageTimerRef.current);
         messageTimerRef.current = null;
       }
+      
+      // Notify parent component that we're not processing
+      if (onProcessingMessage) {
+        onProcessingMessage(false);
+      }
     }
-  }, [network.messageLog.length]);
+  }, [network.messageLog.length, onProcessingMessage]);
   
   // Clean up on unmount
   useEffect(() => {
@@ -54,8 +64,13 @@ const NetworkMessages: React.FC<NetworkMessagesProps> = ({ network, isRunning })
         clearTimeout(messageTimerRef.current);
         messageTimerRef.current = null;
       }
+      
+      // Ensure parent component knows we're not processing
+      if (onProcessingMessage) {
+        onProcessingMessage(false);
+      }
     };
-  }, []);
+  }, [onProcessingMessage]);
   
   // Process messages with speech when simulation is running
   useEffect(() => {
@@ -68,6 +83,9 @@ const NetworkMessages: React.FC<NetworkMessagesProps> = ({ network, isRunning })
         messageTimerRef.current = null;
       }
       processingRef.current = false;
+      if (onProcessingMessage) {
+        onProcessingMessage(false);
+      }
       return;
     }
     
@@ -84,6 +102,12 @@ const NetworkMessages: React.FC<NetworkMessagesProps> = ({ network, isRunning })
       
       if (nextMessageIndex < messages.length) {
         processingRef.current = true;
+        
+        // Notify parent that we're processing a message
+        if (onProcessingMessage) {
+          onProcessingMessage(true);
+        }
+        
         const nextMessage = messages[nextMessageIndex];
         
         // Add next message to visible messages
@@ -101,6 +125,9 @@ const NetworkMessages: React.FC<NetworkMessagesProps> = ({ network, isRunning })
           
           // Schedule next message immediately without speech
           messageTimerRef.current = setTimeout(() => {
+            if (onProcessingMessage) {
+              onProcessingMessage(false);
+            }
             processNextMessage();
           }, 1000); // Short delay between messages
           
@@ -115,6 +142,12 @@ const NetworkMessages: React.FC<NetworkMessagesProps> = ({ network, isRunning })
           () => {
             setSpeakingMessageId(null);
             processingRef.current = false;
+            
+            // Notify parent that we're done processing this message
+            if (onProcessingMessage) {
+              onProcessingMessage(false);
+            }
+            
             // Schedule next message after speech is complete
             messageTimerRef.current = setTimeout(() => {
               processNextMessage();
@@ -129,7 +162,7 @@ const NetworkMessages: React.FC<NetworkMessagesProps> = ({ network, isRunning })
       processNextMessage();
     }
     
-  }, [allMessages, recentMessages, activeTab, isRunning, network.nodes]);
+  }, [allMessages, recentMessages, activeTab, isRunning, network.nodes, onProcessingMessage]);
   
   // When switching tabs, reset the message display
   const handleTabChange = (value: string) => {
@@ -143,6 +176,11 @@ const NetworkMessages: React.FC<NetworkMessagesProps> = ({ network, isRunning })
     if (messageTimerRef.current) {
       clearTimeout(messageTimerRef.current);
       messageTimerRef.current = null;
+    }
+    
+    // Notify parent that we're not processing
+    if (onProcessingMessage) {
+      onProcessingMessage(false);
     }
   };
   

@@ -1,209 +1,215 @@
 
-import { useState } from "react";
-import { SimulationConfig } from "@/lib/simulation";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import React from "react";
 import { Button } from "@/components/ui/button";
+import { SimulationConfig } from "@/lib/simulation";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
-import { toast } from "sonner";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { 
-  PlayCircle, 
-  PauseCircle, 
-  SkipForward, 
-  RefreshCw, 
-  Download,
-  BarChart3
-} from "lucide-react";
+import { RefreshCw, Play, Pause, ChevronRight, Download } from "lucide-react";
 
 interface SimulationControlsProps {
   config: SimulationConfig;
+  isRunning: boolean;
+  isComplete: boolean;
+  isProcessing?: boolean; // Added for message processing
   onUpdateConfig: (config: Partial<SimulationConfig>) => void;
   onReset: () => void;
   onStep: () => void;
   onRunContinuous: () => void;
   onPause: () => void;
   onExport: () => void;
-  isRunning: boolean;
-  isComplete: boolean;
 }
 
 const SimulationControls: React.FC<SimulationControlsProps> = ({
   config,
+  isRunning,
+  isComplete,
+  isProcessing = false,
   onUpdateConfig,
   onReset,
   onStep,
   onRunContinuous,
   onPause,
   onExport,
-  isRunning,
-  isComplete,
 }) => {
-  // Local state for sliders
-  const [agentCount, setAgentCount] = useState(config.agentCount);
-  const [initialBelieverPercentage, setInitialBelieverPercentage] = useState(
-    config.initialBelieverPercentage
-  );
-  const [networkDensity, setNetworkDensity] = useState(config.networkDensity);
-  const [steps, setSteps] = useState(config.steps);
-
-  // Handle slider and select changes
-  const handleUpdateConfig = () => {
-    onUpdateConfig({
-      agentCount,
-      initialBelieverPercentage,
-      networkDensity,
-      steps,
-    });
-    toast.success("Simulation settings updated");
+  // Handle changes to number inputs
+  const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>, key: keyof SimulationConfig) => {
+    const value = parseInt(e.target.value);
+    if (!isNaN(value)) {
+      onUpdateConfig({ [key]: value });
+    }
   };
 
+  // Handle changes to the network type
+  const handleNetworkTypeChange = (value: string) => {
+    onUpdateConfig({ networkType: value as "random" | "scale-free" | "small-world" });
+  };
+
+  // Handle changes to the network density slider
+  const handleDensityChange = (value: number[]) => {
+    onUpdateConfig({ networkDensity: value[0] });
+  };
+
+  // Determine if buttons should be disabled
+  const isDisabled = isRunning || isProcessing; // Disable when running or processing messages
+  const isStepDisabled = isRunning || isComplete || isProcessing; // Disable step button when running, complete, or processing
+
   return (
-    <Card className="w-full">
+    <Card>
       <CardHeader>
-        <CardTitle className="flex justify-between items-center">
-          <span>Simulation Controls</span>
-          <span className="text-sm font-normal">
-            Step: {config.currentStep}/{config.steps}
-          </span>
-        </CardTitle>
-        <CardDescription className="text-xs">
-          Each simulation step takes 2 seconds to process
-        </CardDescription>
+        <CardTitle>Simulation Controls</CardTitle>
+        <CardDescription>Configure and run the belief propagation simulation</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent>
         <div className="space-y-4">
+          {/* Agent Count */}
           <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span>Number of Agents</span>
-              <span>{agentCount}</span>
-            </div>
-            <Slider
-              value={[agentCount]}
-              min={10}
-              max={100}
-              step={1}
-              onValueChange={(values) => setAgentCount(values[0])}
-              disabled={isRunning || isComplete}
+            <Label htmlFor="agent-count">Number of Agents</Label>
+            <Input
+              id="agent-count"
+              type="number"
+              min={5}
+              max={200}
+              value={config.agentCount}
+              onChange={(e) => handleNumberChange(e, "agentCount")}
+              disabled={isDisabled}
             />
+            <p className="text-xs text-muted-foreground">
+              Recommended: 10-100 agents for optimal performance
+            </p>
           </div>
 
+          {/* Initial Believer Percentage */}
           <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span>Initial Believers (%)</span>
-              <span>{initialBelieverPercentage}%</span>
-            </div>
-            <Slider
-              value={[initialBelieverPercentage]}
+            <Label htmlFor="believer-percentage">Initial Believer %</Label>
+            <Input
+              id="believer-percentage"
+              type="number"
               min={0}
               max={100}
-              step={1}
-              onValueChange={(values) => setInitialBelieverPercentage(values[0])}
-              disabled={isRunning || isComplete}
+              value={config.initialBelieverPercentage}
+              onChange={(e) => handleNumberChange(e, "initialBelieverPercentage")}
+              disabled={isDisabled}
             />
           </div>
 
+          {/* Network Type */}
           <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span>Network Density</span>
-              <span>{networkDensity.toFixed(2)}</span>
-            </div>
-            <Slider
-              value={[networkDensity * 100]}
-              min={1}
-              max={50}
-              step={1}
-              onValueChange={(values) => setNetworkDensity(values[0] / 100)}
-              disabled={isRunning || isComplete}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span>Simulation Steps</span>
-              <span>{steps}</span>
-            </div>
-            <Slider
-              value={[steps]}
-              min={5}
-              max={50}
-              step={1}
-              onValueChange={(values) => setSteps(values[0])}
-              disabled={isRunning || isComplete}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <div className="text-sm">Network Type</div>
+            <Label htmlFor="network-type">Network Type</Label>
             <Select
               value={config.networkType}
-              onValueChange={(value) =>
-                onUpdateConfig({
-                  networkType: value as "random" | "scale-free" | "small-world",
-                })
-              }
-              disabled={isRunning || isComplete}
+              onValueChange={handleNetworkTypeChange}
+              disabled={isDisabled}
             >
-              <SelectTrigger>
-                <SelectValue placeholder="Network Type" />
+              <SelectTrigger id="network-type">
+                <SelectValue placeholder="Select network type" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="random">Random</SelectItem>
-                <SelectItem value="scale-free">Scale-Free (Power Law)</SelectItem>
+                <SelectItem value="scale-free">Scale-Free</SelectItem>
                 <SelectItem value="small-world">Small-World</SelectItem>
               </SelectContent>
             </Select>
+            <p className="text-xs text-muted-foreground">
+              Determines how agents are connected in the network
+            </p>
           </div>
 
-          <div className="pt-2">
-            <Button
-              className="w-full"
-              variant="secondary"
-              disabled={isRunning || isComplete}
-              onClick={handleUpdateConfig}
-            >
-              Apply Settings
-            </Button>
+          {/* Network Density */}
+          <div className="space-y-2">
+            <Label>
+              Network Density: {(config.networkDensity * 100).toFixed(0)}%
+            </Label>
+            <Slider
+              defaultValue={[config.networkDensity]}
+              min={0.01}
+              max={0.5}
+              step={0.01}
+              onValueChange={handleDensityChange}
+              disabled={isDisabled}
+            />
+            <p className="text-xs text-muted-foreground">
+              Higher density means more connections between agents
+            </p>
           </div>
-        </div>
 
-        <div className="grid grid-cols-2 gap-2">
-          {!isRunning && !isComplete && (
-            <Button onClick={onStep} disabled={isComplete}>
-              <SkipForward className="mr-1 h-4 w-4" /> Step
-            </Button>
-          )}
+          {/* Simulation Steps */}
+          <div className="space-y-2">
+            <Label htmlFor="steps">Simulation Steps</Label>
+            <Input
+              id="steps"
+              type="number"
+              min={1}
+              max={100}
+              value={config.steps}
+              onChange={(e) => handleNumberChange(e, "steps")}
+              disabled={isDisabled}
+            />
+          </div>
 
-          {!isRunning && !isComplete && (
-            <Button onClick={onRunContinuous} disabled={isComplete} variant="default">
-              <PlayCircle className="mr-1 h-4 w-4" /> Run
-            </Button>
-          )}
-
-          {isRunning && (
-            <Button onClick={onPause} variant="secondary" className="col-span-2">
-              <PauseCircle className="mr-1 h-4 w-4" /> Pause
-            </Button>
-          )}
-
-          {(isComplete || config.currentStep > 0) && (
-            <Button onClick={onReset} variant="destructive">
-              <RefreshCw className="mr-1 h-4 w-4" /> Reset
-            </Button>
-          )}
-
-          {(isComplete || config.currentStep > 0) && (
-            <Button onClick={onExport} variant="secondary">
-              <Download className="mr-1 h-4 w-4" /> Export
-            </Button>
-          )}
+          {/* Progress */}
+          <div className="space-y-2">
+            <Label>
+              Progress: {config.currentStep} / {config.steps} steps
+              {isProcessing && " (processing messages...)"}
+            </Label>
+            <div className="h-2 bg-muted rounded-full overflow-hidden">
+              <div
+                className="h-full bg-primary"
+                style={{
+                  width: `${(config.currentStep / config.steps) * 100}%`,
+                }}
+              ></div>
+            </div>
+          </div>
         </div>
       </CardContent>
+      <CardFooter className="flex flex-col space-y-2">
+        <div className="flex space-x-2 w-full">
+          {isRunning ? (
+            <Button onClick={onPause} className="flex-1" variant="outline">
+              <Pause className="mr-2 h-4 w-4" />
+              Pause
+            </Button>
+          ) : (
+            <Button 
+              onClick={onRunContinuous} 
+              className="flex-1" 
+              disabled={isComplete || isProcessing}
+            >
+              <Play className="mr-2 h-4 w-4" />
+              Run
+            </Button>
+          )}
+          <Button 
+            onClick={onStep} 
+            variant="outline" 
+            disabled={isStepDisabled}
+          >
+            <ChevronRight className="mr-2 h-4 w-4" />
+            Step
+          </Button>
+          <Button
+            onClick={onReset}
+            variant="outline"
+            disabled={isDisabled}
+          >
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Reset
+          </Button>
+        </div>
+        <Button
+          onClick={onExport}
+          variant="secondary"
+          className="w-full"
+          disabled={!config.currentStep}
+        >
+          <Download className="mr-2 h-4 w-4" />
+          Export Data
+        </Button>
+      </CardFooter>
     </Card>
   );
 };
