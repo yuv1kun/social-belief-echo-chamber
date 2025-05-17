@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useCallback } from "react";
 import { toast } from "sonner";
 import SimulationHeader from "@/components/SimulationHeader";
@@ -20,10 +19,12 @@ import {
   initializeAgents,
   runBeliefPropagationStep,
   getRandomTopic,
+  updateAgentTraits,
 } from "@/lib/simulation";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { MessageCircle } from "lucide-react";
+import { cancelSpeech } from "@/lib/speech";
 
 // Simulation step interval in milliseconds (5 seconds)
 const STEP_INTERVAL = 5000;
@@ -62,6 +63,9 @@ const Index = () => {
   // Initialize simulation
   const initializeSimulation = useCallback(() => {
     try {
+      // Cancel any ongoing speech
+      cancelSpeech();
+      
       // Generate a single topic for this simulation run
       const simulationTopic = getRandomTopic();
       toast.info(`New discussion topic: ${simulationTopic}`);
@@ -179,6 +183,8 @@ const Index = () => {
       clearInterval(runInterval);
       setRunInterval(null);
     }
+    // Cancel any ongoing speech
+    cancelSpeech();
     initializeSimulation();
     toast.success("Simulation reset with a new discussion topic");
   }, [initializeSimulation, runInterval]);
@@ -201,9 +207,10 @@ const Index = () => {
     }
   }, [isInitialized, initializeSimulation]);
 
-  // Clean up interval on unmount
+  // Clean up on unmount
   useEffect(() => {
     return () => {
+      cancelSpeech();
       if (runInterval) {
         clearInterval(runInterval);
       }

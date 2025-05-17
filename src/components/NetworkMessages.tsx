@@ -4,6 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AgentMessages from "./AgentMessages";
 import { Network, Message } from "@/lib/simulation";
 import { MessageCircle } from "lucide-react";
+import { queueSpeech, cancelSpeech, initializeVoices } from "@/lib/speech";
 
 interface NetworkMessagesProps {
   network: Network;
@@ -13,6 +14,7 @@ interface NetworkMessagesProps {
 const NetworkMessages: React.FC<NetworkMessagesProps> = ({ network, isRunning }) => {
   const [activeTab, setActiveTab] = useState<"all" | "recent">("all");
   const [visibleMessages, setVisibleMessages] = useState<Message[]>([]);
+  const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
   const messageTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastMessageCountRef = useRef<number>(0);
   
@@ -21,12 +23,18 @@ const NetworkMessages: React.FC<NetworkMessagesProps> = ({ network, isRunning })
   
   // Get only the most recent messages (last 20)
   const recentMessages = network.messageLog.slice(-20);
+
+  // Initialize speech voices when component mounts
+  useEffect(() => {
+    initializeVoices();
+  }, []);
   
   // Reset when simulation resets
   useEffect(() => {
     if (network.messageLog.length === 0) {
       setVisibleMessages([]);
       lastMessageCountRef.current = 0;
+      cancelSpeech();
       
       if (messageTimerRef.current) {
         clearTimeout(messageTimerRef.current);
@@ -38,6 +46,7 @@ const NetworkMessages: React.FC<NetworkMessagesProps> = ({ network, isRunning })
   // Clean up on unmount
   useEffect(() => {
     return () => {
+      cancelSpeech();
       if (messageTimerRef.current) {
         clearTimeout(messageTimerRef.current);
         messageTimerRef.current = null;
@@ -45,7 +54,7 @@ const NetworkMessages: React.FC<NetworkMessagesProps> = ({ network, isRunning })
     };
   }, []);
   
-  // Process messages with 5-second intervals when simulation is running
+  // Process messages with speech when simulation is running
   useEffect(() => {
     const messages = activeTab === "all" ? allMessages : recentMessages;
     
@@ -76,10 +85,23 @@ const NetworkMessages: React.FC<NetworkMessagesProps> = ({ network, isRunning })
         setVisibleMessages(prev => [...prev, nextMessage]);
         lastMessageCountRef.current = nextMessageIndex + 1;
         
-        // Schedule next message after 5 seconds
-        messageTimerRef.current = setTimeout(() => {
-          processNextMessage();
-        }, 5000);
+        // Get agent gender information from network nodes
+        const agent = network.nodes.find(a => a.id === nextMessage.senderId);
+        const gender = agent?.gender || 'male';
+        
+        // Queue speech for this message
+        queueSpeech(
+          nextMessage.content, 
+          gender, 
+          () => setSpeakingMessageId(nextMessage.id),
+          () => {
+            setSpeakingMessageId(null);
+            // Schedule next message after speech is complete
+            messageTimerRef.current = setTimeout(() => {
+              processNextMessage();
+            }, 500); // Small delay between messages
+          }
+        );
       }
     };
     
@@ -88,7 +110,7 @@ const NetworkMessages: React.FC<NetworkMessagesProps> = ({ network, isRunning })
       processNextMessage();
     }
     
-  }, [allMessages, recentMessages, activeTab, isRunning]);
+  }, [allMessages, recentMessages, activeTab, isRunning, network.nodes]);
   
   // When switching tabs, reset the message display
   const handleTabChange = (value: string) => {
@@ -96,6 +118,7 @@ const NetworkMessages: React.FC<NetworkMessagesProps> = ({ network, isRunning })
     // Reset message processing for the new tab
     lastMessageCountRef.current = 0;
     setVisibleMessages([]);
+    cancelSpeech();
     
     if (messageTimerRef.current) {
       clearTimeout(messageTimerRef.current);
@@ -117,6 +140,7 @@ const NetworkMessages: React.FC<NetworkMessagesProps> = ({ network, isRunning })
             messages={currentMessages}
             allAgents 
             currentTopic={network.currentTopic}
+            speakingMessageId={speakingMessageId}
           />
         </TabsContent>
         <TabsContent value="recent" className="pt-4">
@@ -124,6 +148,7 @@ const NetworkMessages: React.FC<NetworkMessagesProps> = ({ network, isRunning })
             messages={currentMessages.slice(-20)} 
             allAgents 
             currentTopic={network.currentTopic}
+            speakingMessageId={speakingMessageId}
           />
         </TabsContent>
       </Tabs>

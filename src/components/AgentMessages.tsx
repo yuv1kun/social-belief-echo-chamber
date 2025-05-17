@@ -10,20 +10,22 @@ import {
 } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { MessageCircle } from "lucide-react";
+import { MessageCircle, Volume2 } from "lucide-react";
 
 interface AgentMessagesProps {
   messages: Message[];
   agentId?: number;
   allAgents?: boolean;
   currentTopic?: string;
+  speakingMessageId?: string | null;
 }
 
 const AgentMessages: React.FC<AgentMessagesProps> = ({ 
   messages, 
   agentId, 
   allAgents = false,
-  currentTopic
+  currentTopic,
+  speakingMessageId = null
 }) => {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   
@@ -76,7 +78,8 @@ const AgentMessages: React.FC<AgentMessagesProps> = ({
                 <div 
                   key={message.id} 
                   className={`flex flex-col space-y-1 ${message.senderId !== agentId ? 'border-l-2 pl-4 border-muted-foreground/20' : 'border-r-2 pr-4 border-primary/20 ml-auto'} 
-                    hover:bg-muted/50 rounded p-2 transition-colors max-w-[85%] animate-fade-in`}
+                    hover:bg-muted/50 rounded p-2 transition-colors max-w-[85%] animate-fade-in
+                    ${speakingMessageId === message.id ? 'bg-muted/60 border-primary/50' : ''}`}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -94,7 +97,12 @@ const AgentMessages: React.FC<AgentMessagesProps> = ({
                     </div>
                     <span className="text-xs text-muted-foreground">{formatTime(message.timestamp)}</span>
                   </div>
-                  <p className="text-sm font-medium break-words">{message.content}</p>
+                  <div className="flex items-start gap-2">
+                    <p className="text-sm font-medium break-words flex-1">{message.content}</p>
+                    {speakingMessageId === message.id && (
+                      <Volume2 className="h-4 w-4 text-primary animate-pulse flex-shrink-0 mt-0.5" />
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
