@@ -78,7 +78,10 @@ const Index = () => {
 
       // Initialize trait history for all agents
       agents.forEach(agent => {
-        agent.traitHistory = [agent.traits];
+        if (!agent.traitHistory) {
+          agent.traitHistory = [];
+        }
+        agent.traitHistory.push({...agent.traits});
       });
 
       // Create network

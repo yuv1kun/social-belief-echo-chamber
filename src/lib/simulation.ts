@@ -38,6 +38,7 @@ export type Agent = {
   messages: Message[]; // Messages sent by this agent
   receivedMessages: Message[]; // Messages received by this agent
   currentTopic?: string; // Current topic the agent is discussing
+  traitHistory?: BigFiveTraits[]; // History of trait changes over time
 };
 
 export type Network = {
@@ -443,7 +444,8 @@ export const initializeAgents = (
       susceptibility,
       messages: [],
       receivedMessages: [],
-      currentTopic: simulationTopic // Set the same topic for all agents
+      currentTopic: simulationTopic, // Set the same topic for all agents
+      traitHistory: [] // Initialize as empty array
     });
   }
 
