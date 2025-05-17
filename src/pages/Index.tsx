@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useCallback } from "react";
 import { toast } from "sonner";
 import SimulationHeader from "@/components/SimulationHeader";
@@ -19,12 +20,11 @@ import {
   initializeAgents,
   runBeliefPropagationStep,
   getRandomTopic,
-  updateAgentTraits,
 } from "@/lib/simulation";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { MessageCircle } from "lucide-react";
-import { cancelSpeech } from "@/lib/speech";
+import { initializeVoices, cancelSpeech } from "@/lib/speech";
 
 // Simulation step interval in milliseconds (5 seconds)
 const STEP_INTERVAL = 5000;
@@ -76,6 +76,11 @@ const Index = () => {
         config.initialBelieverPercentage
       );
 
+      // Initialize trait history for all agents
+      agents.forEach(agent => {
+        agent.traitHistory = [agent.traits];
+      });
+
       // Create network
       const newNetwork = createNetwork(
         agents,
@@ -103,8 +108,9 @@ const Index = () => {
     }
   }, [config.agentCount, config.initialBelieverPercentage, config.networkDensity, config.networkType]);
 
-  // Initialize on first load
+  // Initialize voices and simulation on first load
   useEffect(() => {
+    initializeVoices();
     initializeSimulation();
   }, [initializeSimulation]);
 

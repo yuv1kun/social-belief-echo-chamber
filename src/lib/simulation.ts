@@ -365,6 +365,53 @@ export const generateMessage = (agent: Agent, receiverId: number | null = null):
 };
 
 /**
+ * Update agent traits based on interactions and influence
+ * @param agent The agent to update
+ * @param messages Recent messages received
+ * @returns Updated traits
+ */
+export const updateAgentTraits = (agent: Agent, messages: Message[]): BigFiveTraits => {
+  if (!messages.length) return agent.traits;
+  
+  // Clone current traits to avoid direct mutation
+  const newTraits = { ...agent.traits };
+
+  // Calculate trait changes based on recent interactions
+  messages.forEach(message => {
+    const influenceFactor = 0.01; // Small incremental changes
+    
+    if (message.belief === agent.believer) {
+      // Reinforcement from like-minded agents
+      newTraits.openness = Math.max(0, Math.min(1, newTraits.openness - influenceFactor * 0.5)); // Become less open to new ideas
+      newTraits.conscientiousness = Math.max(0, Math.min(1, newTraits.conscientiousness + influenceFactor)); // More confident in current beliefs
+      
+      // Agreeable people become more agreeable in echo chambers
+      if (agent.traits.agreeableness > 0.5) {
+        newTraits.agreeableness = Math.max(0, Math.min(1, newTraits.agreeableness + influenceFactor));
+      }
+    } else {
+      // Challenged by opposing views
+      newTraits.neuroticism = Math.max(0, Math.min(1, newTraits.neuroticism + influenceFactor * 0.8)); // Increase stress when challenged
+      
+      if (agent.susceptibility && agent.susceptibility > 0.6) {
+        // More susceptible agents become more open when challenged
+        newTraits.openness = Math.max(0, Math.min(1, newTraits.openness + influenceFactor));
+      } else {
+        // Less susceptible agents might become more closed-minded when challenged
+        newTraits.openness = Math.max(0, Math.min(1, newTraits.openness - influenceFactor));
+      }
+      
+      // Extroverts may become more extroverted when debating
+      if (agent.traits.extraversion > 0.6) {
+        newTraits.extraversion = Math.max(0, Math.min(1, newTraits.extraversion + influenceFactor * 0.5));
+      }
+    }
+  });
+  
+  return newTraits;
+};
+
+/**
  * Initialize agents with random traits and assign initial believers
  * @param count Number of agents to create
  * @param initialBelieverPercentage Percentage of agents that start as believers
