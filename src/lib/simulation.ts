@@ -23,6 +23,7 @@ export type Message = {
   content: string;
   belief: boolean; // The belief state when the message was sent
   topic?: string; // The topic of discussion
+  replyToId?: string; // ID of the message being replied to
 };
 
 export type Agent = {
@@ -39,6 +40,7 @@ export type Agent = {
   receivedMessages: Message[]; // Messages received by this agent
   currentTopic?: string; // Current topic the agent is discussing
   traitHistory?: BigFiveTraits[]; // History of trait changes over time
+  messageContextMemory?: Message[]; // Keep track of recent messages for context
 };
 
 export type Network = {
@@ -97,10 +99,507 @@ export const discussionTopics = [
   "Traditional festivals in modern times"
 ];
 
+// Personality-based communication styles for more diverse messages
+const communicationStyles = {
+  humorous: {
+    intros: [
+      "LOL! ", 
+      "Guys, I can't even 😂 ", 
+      "This is gonna sound ridiculous but ", 
+      "No joke, ", 
+      "Wait wait wait, haha, "
+    ],
+    replies: [
+      "Haha, @{name}, that's hilarious! Actually though, ",
+      "@{name} I'm dying 😂 But seriously, ",
+      "Okay @{name}, I see what you did there. But listen, ",
+      "LMAO @{name} just made my day! Though I think ",
+      "@{name} always brings the jokes! Speaking of {topic} though, "
+    ],
+    templates: [
+      "Is it just me, or is {topic} basically the {random_comparison}? 😂",
+      "My grandma has stronger opinions about {topic} than all of us combined!",
+      "Plot twist: {topic} was invented by people who just wanted more Instagram content.",
+      "I showed my cat an article about {topic} and even she rolled her eyes.",
+      "If {topic} was a person, it would definitely be that friend who never splits the bill fairly."
+    ],
+    disagreements: [
+      "@{name} Wait wait wait... you actually believe that? Let me get this straight...",
+      "Umm @{name}, no offense but that's the funniest take on {topic} I've heard all day 😂",
+      "I love you @{name}, but that's just so wrong it's actually funny 🤣",
+      "Okay I can't be the only one who thinks @{name}'s take is completely wild, right?",
+      "@{name} I'm gonna pretend I didn't hear that absolutely ridiculous opinion 😅"
+    ],
+    agreements: [
+      "THIS! @{name} gets it! I've been saying the same thing about {topic} forever!",
+      "Haha @{name} you took the words right out of my mouth, but you said it funnier",
+      "@{name} high-five for being the only other sane person in this chat 😂",
+      "Exactly @{name}! Finally someone who doesn't have bizarre opinions about {topic} 🙌",
+      "@{name} 👆 This person understands! Listen to them people!"
+    ],
+    endings: [
+      " 🤣🤣🤣",
+      " I'll see myself out now.",
+      " Don't @ me!",
+      " *drops mic*",
+      " This is why I shouldn't be allowed on the internet after midnight."
+    ]
+  },
+  intellectual: {
+    intros: [
+      "I've been reflecting on ", 
+      "Studies suggest that ", 
+      "Interestingly, ", 
+      "From an analytical perspective, ", 
+      "If we examine "
+    ],
+    replies: [
+      "I appreciate your thoughts @{name}, though I would add that ",
+      "Building on what @{name} said, we should also consider ",
+      "@{name} raises valid points, however the research also indicates ",
+      "I find @{name}'s perspective fascinating. In addition, ",
+      "While @{name} is correct in many ways, it's worth noting that "
+    ],
+    templates: [
+      "There are multiple facets to consider regarding {topic}, particularly from a sociocultural lens.",
+      "The discourse surrounding {topic} often neglects historical context and systemic factors.",
+      "When we analyze {topic} through comparative frameworks, we see fascinating patterns emerge.",
+      "The literature on {topic} presents compelling arguments both for and against mainstream positions.",
+      "{topic} represents a complex intersection of policy, culture, and individual choice worthy of nuanced discussion."
+    ],
+    disagreements: [
+      "@{name} While I respect your viewpoint, the evidence suggests a different conclusion about {topic}.",
+      "I must respectfully challenge @{name}'s assertion, as current research indicates that...",
+      "@{name} That's an interesting perspective, though I believe it overlooks several critical factors.",
+      "I appreciate @{name}'s contribution, but there are important counterpoints we should examine.",
+      "What @{name} suggests is thought-provoking, however the empirical data points toward..."
+    ],
+    agreements: [
+      "@{name} has articulated exactly what the research demonstrates about {topic}.",
+      "I concur with @{name}'s analysis and would further add that...",
+      "@{name} makes an excellent point that aligns with the scholarly consensus on this issue.",
+      "As @{name} correctly noted, the evidence strongly supports this perspective on {topic}.",
+      "@{name}'s reasoning is sound and consistent with the findings of several recent studies."
+    ],
+    endings: [
+      " What do you think of this analysis?",
+      " I'd be curious to hear other perspectives.",
+      " The research in this area continues to evolve.",
+      " This is just one framework to consider, of course.",
+      " I've been reading extensively about this lately."
+    ]
+  },
+  skeptical: {
+    intros: [
+      "I'm not buying that ", 
+      "Am I the only one who thinks ", 
+      "Let's be real though, ", 
+      "Call me skeptical, but ", 
+      "I need receipts on "
+    ],
+    replies: [
+      "Sorry @{name} but I'm going to need some actual evidence for that claim about {topic}.",
+      "@{name} That's exactly what they want you to think. The reality is ",
+      "I hear what @{name} is saying, but honestly? I'm not convinced because ",
+      "@{name} Where did you get that information? Because my research shows ",
+      "With all due respect to @{name}, I've looked into this and found "
+    ],
+    templates: [
+      "Everyone's talking about {topic} like it's revolutionary, but where's the actual evidence?",
+      "I've yet to see convincing proof that {topic} is anything but overblown hype.",
+      "My brother-in-law works in this field and says most of what we hear about {topic} is massively exaggerated.",
+      "I've been researching {topic} for weeks and honestly, the data doesn't support these wild claims.",
+      "I was initially on board with all this {topic} talk until I actually fact-checked it."
+    ],
+    disagreements: [
+      "@{name} I've heard that argument before, but it falls apart when you look at the actual facts.",
+      "Yeah, @{name} that's what mainstream sources say, but if you dig deeper you'll find...",
+      "@{name} I used to believe that too until I did my own research on {topic}.",
+      "Sorry @{name}, but that's just not accurate. The real story about {topic} is...",
+      "I have to challenge what @{name} is saying here. If you follow the money on this {topic} issue..."
+    ],
+    agreements: [
+      "Finally! @{name} is the only one here speaking sense about {topic}.",
+      "Exactly @{name}, I've been saying this all along but nobody listens.",
+      "@{name} gets it. Most people aren't ready for the truth about {topic}.",
+      "This is why I respect @{name} - not afraid to question the popular narrative on {topic}.",
+      "@{name} is right to be cautious. There's so much misinformation about {topic} going around."
+    ],
+    endings: [
+      " Just saying what everyone's afraid to say.",
+      " Anyone else feel this way?",
+      " Show me the data or I'm not convinced.",
+      " Maybe I'm wrong, but I doubt it.",
+      " Sorry not sorry."
+    ]
+  },
+  enthusiastic: {
+    intros: [
+      "OMG GUYS!!! ", 
+      "I'm OBSESSED with ", 
+      "You won't believe how amazing ", 
+      "I've literally never been more excited about ", 
+      "STOP EVERYTHING and let's talk about "
+    ],
+    replies: [
+      "YES @{name}!!! I couldn't agree more! And also did you know that ",
+      "Omg @{name} you just reminded me about this AMAZING thing about {topic} - ",
+      "@{name} EXACTLY!!! And it gets even better because ",
+      "I'm freaking out @{name} because that's EXACTLY what I was thinking about {topic}!",
+      "@{name} YES YES YES!!! And we should also talk about how "
+    ],
+    templates: [
+      "{topic} is literally THE MOST important thing we should all be focused on right now!!!",
+      "I just found this INCREDIBLE article about {topic} and it's changed my entire perspective!!!",
+      "My life completely transformed once I started taking {topic} seriously! Best decision ever!",
+      "I've been telling EVERYONE about {topic} and you should too! It's a game-changer!",
+      "{topic} is not just important, it's REVOLUTIONARY and we need to spread the word!"
+    ],
+    disagreements: [
+      "@{name} WHAT?! No way! That's so not true about {topic}! Actually...",
+      "I have to disagree STRONGLY with @{name}! The truth about {topic} is so much more exciting!",
+      "Ohhh @{name} I used to think that too but then I discovered this MIND-BLOWING fact about {topic}:",
+      "@{name} I respect you but I'm PASSIONATE about this and your take on {topic} is missing some KEY points!",
+      "Nooo @{name}! You've got it all wrong about {topic}! Let me explain why it's actually AMAZING:"
+    ],
+    agreements: [
+      "YESSSS @{name}!!! THIS! ALL OF THIS! {topic} is literally everything you just said!!",
+      "@{name} I'M SO GLAD SOMEONE FINALLY SAID IT!! {topic} deserves ALL this enthusiasm!",
+      "I'M SCREAMING @{name} because you just perfectly explained why {topic} is so incredible!!",
+      "@{name} is speaking nothing but FACTS about {topic}! I couldn't have said it better!!",
+      "THIS THIS THIS @{name}!! You're 100% right about {topic} and I'm here for it!!"
+    ],
+    endings: [
+      " WHO'S WITH ME?! 🙌",
+      " Like if you agree!!! ❤️",
+      " Can't believe more people aren't talking about this!",
+      " Changed. My. Life. Period.",
+      " #obsessed #lifechanging"
+    ]
+  },
+  casual: {
+    intros: [
+      "So... ", 
+      "Hey y'all, ", 
+      "Random thought, but ", 
+      "Was just thinking, ", 
+      "Not to change the subject, but "
+    ],
+    replies: [
+      "Yeah @{name}, I get what you're saying. I was thinking about that and ",
+      "Hmm @{name} that's interesting. I was chatting with my friend about {topic} and ",
+      "@{name} good point. I also noticed that ",
+      "That reminds me @{name}, I saw something similar about {topic} where ",
+      "True @{name}. Also did anyone else see that thing about {topic} where "
+    ],
+    templates: [
+      "Anyone else been following that stuff about {topic}? My cousin was telling me about it.",
+      "I saw something on Instagram about {topic} yesterday. Kinda interesting I guess.",
+      "My friend and I were talking about {topic} over coffee. Still not sure what to think.",
+      "Been seeing {topic} everywhere lately. Is it actually a big deal or just trending?",
+      "So what's the deal with {topic} anyway? I feel like I'm missing something."
+    ],
+    disagreements: [
+      "Idk @{name}, I heard different things about {topic} actually...",
+      "@{name} that's one way to look at it I guess, but I think {topic} is more about...",
+      "Not sure if I agree with @{name} tbh. From what I've seen about {topic}...",
+      "Hmm @{name}, my cousin works in that field and says {topic} is actually more like...",
+      "@{name} interesting... but didn't they just find out that {topic} is actually...?"
+    ],
+    agreements: [
+      "Yeah @{name} that's what I heard about {topic} too.",
+      "Same @{name}, my thoughts exactly about this whole {topic} thing.",
+      "@{name} makes a good point about {topic}. I was telling my roommate the same thing.",
+      "That's what I was thinking too @{name}. {topic} is basically just like you said.",
+      "@{name} yeah, exactly. That's pretty much what I understand about {topic} too."
+    ],
+    endings: [
+      " Anyway, just curious.",
+      " No strong opinions yet tbh.",
+      " What do you guys think?",
+      " Maybe it's just my algorithm though.",
+      " Sorry if that was off-topic lol."
+    ]
+  },
+  contrarian: {
+    intros: [
+      "Unpopular opinion: ", 
+      "Everyone's going to disagree, but ", 
+      "I know I'll get flamed for this, but ", 
+      "Going against the grain here - ", 
+      "Hot take incoming: "
+    ],
+    replies: [
+      "See, this is exactly where @{name} and most people get {topic} completely wrong.",
+      "Unlike what @{name} thinks, the reality about {topic} is actually the opposite.",
+      "That's the conventional wisdom @{name}, but if you think more deeply about {topic}...",
+      "@{name} represents the mainstream view, but the contrarian truth about {topic} is...",
+      "While everyone agrees with @{name}, I'm going to argue that {topic} is actually..."
+    ],
+    templates: [
+      "Actually, {topic} is the exact opposite of what most people think, and here's why.",
+      "Everyone's approaching {topic} completely backwards. The conventional wisdom is dead wrong.",
+      "I've held the minority view on {topic} for years, and I'm finally being proven right.",
+      "If you think {topic} is straightforward, you're missing the counterintuitive reality.",
+      "The mainstream narrative about {topic} completely misses the point, which is actually [contrarian point]."
+    ],
+    disagreements: [
+      "@{name} That's such a predictable take. The more interesting angle on {topic} is...",
+      "Unlike @{name} and the sheep, I've actually thought critically about {topic} and realized...",
+      "This is why discussions on {topic} get nowhere - @{name} just repeats what everyone says.",
+      "@{name} is just following the crowd on this one. The truth about {topic} that nobody wants to admit is...",
+      "While @{name} takes the safe position, I'll say what needs to be said: {topic} is actually..."
+    ],
+    agreements: [
+      "Wow, @{name} is actually one of the few people who gets it about {topic}. I'm impressed.",
+      "@{name} Finally someone else willing to challenge the status quo on {topic}!",
+      "Exactly @{name}. You and I see what everyone else misses about {topic}.",
+      "@{name} I rarely agree with anyone on {topic}, but you've nailed it.",
+      "I thought I was the only one who saw through the nonsense about {topic}, but @{name} gets it too."
+    ],
+    endings: [
+      " Debate me.",
+      " You can disagree, but history will prove me right.",
+      " Downvote me if you want, I stand by this.",
+      " Facts don't care about consensus.",
+      " Just pointing out what nobody wants to admit."
+    ]
+  },
+  supportive: {
+    intros: [
+      "I just want to say ", 
+      "Guys, I appreciate ", 
+      "I love how we're all ", 
+      "It makes me happy that ", 
+      "This is such a safe space to "
+    ],
+    replies: [
+      "@{name} thank you so much for sharing that perspective on {topic}! I also feel that ",
+      "What @{name} said about {topic} resonates with me so much. I'd add that ",
+      "I really value @{name}'s thoughts here. My experience with {topic} has been ",
+      "@{name} brings up such important points about {topic}. It reminds me of ",
+      "I so appreciate @{name}'s vulnerability in sharing about {topic}. My thoughts are "
+    ],
+    templates: [
+      "It's so important we can all respectfully discuss {topic} even when we have different views! ❤️",
+      "Everyone's perspective on {topic} is valid and I'm learning so much from all of you.",
+      "What I love about this group is how we can share thoughts on {topic} without judgment.",
+      "However you feel about {topic}, I support your journey and appreciate your sharing.",
+      "{topic} affects us all differently, and that's what makes this conversation so valuable."
+    ],
+    disagreements: [
+      "I see where @{name} is coming from about {topic}, and while I have a different perspective...",
+      "While I understand @{name}'s view on {topic}, my experience has shown me that...",
+      "@{name} makes good points, though I've found that {topic} can also be viewed as...",
+      "I respect @{name}'s thoughts on this! My own journey with {topic} has led me to believe...",
+      "Everyone's experience is valid - @{name} sees {topic} one way, and I've found that..."
+    ],
+    agreements: [
+      "@{name} YES! Thank you for expressing that so beautifully about {topic} 💕",
+      "I completely agree with @{name} and appreciate you sharing those thoughts on {topic}.",
+      "@{name} has expressed exactly what I believe about {topic}, but never could put into words.",
+      "This is why I value @{name}'s perspective so much - such wisdom about {topic}!",
+      "Standing with @{name} on this. These insights about {topic} are so important."
+    ],
+    endings: [
+      " Thank you all for being so open!",
+      " Group hug! 🤗",
+      " I'm here if anyone wants to talk more.",
+      " You're all amazing people.",
+      " Sending positive vibes to everyone!"
+    ]
+  },
+  storyteller: {
+    intros: [
+      "So there I was, ", 
+      "This reminds me of the time ", 
+      "You won't believe what happened when ", 
+      "Funny story related to this - ", 
+      "This takes me back to when "
+    ],
+    replies: [
+      "What @{name} just said about {topic} reminds me of this crazy story...",
+      "@{name}'s experience with {topic} is so similar to what happened to me last year when...",
+      "Listening to @{name} talk about {topic} brings back this memory from my childhood when...",
+      "That's so interesting @{name}! It's like what happened to my uncle who...",
+      "@{name}'s point about {topic} is spot on. It reminds me of this situation where..."
+    ],
+    templates: [
+      "I was talking to my uncle about {topic} at a wedding last month, and he told me this crazy story about...",
+      "Last year, I had a firsthand experience with {topic} that completely changed my perspective. It all started when...",
+      "My grandmother always had strong opinions about {topic}. She used to tell us how back in her day...",
+      "I actually witnessed the effects of {topic} during my trip to Jaipur. We were at this local market when suddenly...",
+      "My college roommate was an expert on {topic} and once demonstrated why it matters by showing me..."
+    ],
+    disagreements: [
+      "That's interesting @{name}, but it reminds me of a very different experience I had with {topic} where...",
+      "I respect @{name}'s perspective, though my own story with {topic} took a different turn when...",
+      "What @{name} describes isn't what I've seen. Let me tell you what actually happened when I encountered {topic}...",
+      "@{name}'s take makes me think of my cousin's experience, which was completely opposite because...",
+      "I hear what @{name} is saying, but my grandfather always told this story about {topic} that shows..."
+    ],
+    agreements: [
+      "Yes! What @{name} said about {topic} is exactly like what happened to me when...",
+      "@{name}'s experience mirrors my own story perfectly! I remember when...",
+      "That's so true @{name}! It's like that time I was dealing with {topic} and...",
+      "Exactly what @{name} said! It reminds me of this incredible moment when...",
+      "@{name} you took the words right out of my mouth. This one time with {topic}..."
+    ],
+    endings: [
+      " And that's why I never look at {topic} the same way again.",
+      " Long story short, I learned my lesson!",
+      " True story, I swear!",
+      " I still think about that whenever this topic comes up.",
+      " Sorry for the tangent, but I thought it was relevant!"
+    ]
+  },
+  reactionary: {
+    intros: [
+      "Wait WHAT?! ", 
+      "I can't believe nobody's mentioned ", 
+      "How is everyone ignoring ", 
+      "Are we seriously not talking about ", 
+      "Excuse me, but "
+    ],
+    replies: [
+      "Hold up @{name} - are you serious about what you just said regarding {topic}?!",
+      "@{name} did you see the BREAKING news about what you just mentioned?!",
+      "I can't believe @{name} brought this up - have you all seen the latest about {topic}?!",
+      "Whoa @{name} - your point about {topic} just reminded me of that shocking update from yesterday!",
+      "@{name} mentioned {topic} and nobody's reacting to the HUGE news about this?!"
+    ],
+    templates: [
+      "Did you all see that breaking news about {topic}? This changes EVERYTHING we've been discussing!",
+      "I'm shocked that nobody's addressing the recent developments in {topic}! Have you all seen this?",
+      "Am I the only one who got that notification about {topic} just now? This is huge!",
+      "Sorry to interrupt but there's new information about {topic} that completely contradicts what we thought!",
+      "Hold up - the latest update on {topic} just dropped and it proves my point entirely!"
+    ],
+    disagreements: [
+      "@{name} WHAT?! That is SO outdated information about {topic}! The latest reports show...",
+      "I CANNOT believe @{name} just said that about {topic} when we LITERALLY just found out that...",
+      "Ummm @{name}? Did you miss the BOMBSHELL news about {topic} that completely disproves that?",
+      "@{name} that might have been true YESTERDAY but have you seen what just came out about {topic}??",
+      "Is @{name} seriously ignoring the MASSIVE revelation about {topic} from this morning?!"
+    ],
+    agreements: [
+      "YES! Finally @{name} is addressing what I've been SCREAMING about {topic}!!",
+      "@{name} EXACTLY! I was about to post that SAME breaking news about {topic}!!",
+      "THANK YOU @{name}!! I thought I was the only one who saw that update about {topic}!!",
+      "THIS!! @{name} is the only one paying attention to what's ACTUALLY happening with {topic}!",
+      "@{name} gets it! That news alert about {topic} changed EVERYTHING!"
+    ],
+    endings: [
+      " Check your news feeds people!",
+      " This is kind of a big deal???",
+      " How are y'all so calm about this?",
+      " This conversation aged poorly REAL quick!",
+      " *sends link* READ THIS NOW!"
+    ]
+  }
+};
+
+// Random comparisons for humor
+const randomComparisons = [
+  "trying to teach your grandparents to use TikTok",
+  "a pizza with pineapple - controversial but secretly loved",
+  "that one relative who forwards every WhatsApp message",
+  "trying to find matching socks in the morning",
+  "explaining memes to your parents",
+  "auto-correct fails in professional emails",
+  "trying to take a nice photo of your pet",
+  "that friend who's always 40 minutes late",
+  "a buffet with only healthy options - disappointing",
+  "replying 'ok' to a long message"
+];
+
+// Topic-specific response templates for more diverse conversations
+// These add variety by having different takes based on the actual topic
+const topicSpecificTemplates = {
+  "Climate change and its effects": {
+    believer: [
+      "I was at the beach last summer and the water level was definitely higher. Climate change is real.",
+      "My plants are blooming at weird times now. Anyone else notice seasons getting all mixed up?",
+      "Can't believe we're still debating climate change in 2025. My AC bills are proof enough!",
+      "My cousin in Kerala said the monsoons are completely unpredictable now compared to 10 years ago.",
+      "Just invested in solar panels for my house. Might as well adapt while we can."
+    ],
+    skeptic: [
+      "It was literally freezing yesterday. Some 'global warming' we're having lol.",
+      "My grandfather says the weather has always been unpredictable. Nothing new.",
+      "These climate models keep changing their predictions. Make up your minds already!",
+      "I'm all for clean energy but these climate alarmists are just fearmongering.",
+      "Natural climate cycles have been happening for millions of years. This is nothing special."
+    ]
+  },
+  "Social media's impact on society": {
+    believer: [
+      "Notice how nobody makes eye contact on the Metro anymore? Everyone's just scrolling.",
+      "My screen time report last week was horrifying. We're all addicted and it's not healthy.",
+      "My cousin's 7-year-old has an Instagram already. I didn't even have a PHONE at that age.",
+      "Social media is literally rewiring our brains. I feel my attention span shrinking daily.",
+      "Started a digital detox last month. Best decision ever for my mental health."
+    ],
+    skeptic: [
+      "People blamed novels, then TV, now social media. Same moral panic, different decade.",
+      "Social media helped me find my community when I moved cities. It's not all bad.",
+      "My grandmother learns recipes on YouTube and talks to us on WhatsApp. It's enriched her life.",
+      "Social media literally enabled major social movements. It's a powerful democratizing force.",
+      "We're not 'addicted' - we're adapting to new communication tools like humans always have."
+    ]
+  },
+  "Traditional medicine vs. modern medicine": {
+    believer: [
+      "My grandmother's turmeric remedy for colds works better than any medicine I've tried.",
+      "Traditional medicine treats the whole person, not just symptoms like Western medicine does.",
+      "These practices survived thousands of years for a reason. They clearly work.",
+      "I was skeptical until my chronic pain was cured by acupuncture after years of pills failing.",
+      "Ayurveda helped balance my body in ways my doctor couldn't explain or achieve."
+    ],
+    skeptic: [
+      "Show me the peer-reviewed studies on your grandmother's turmeric remedy...",
+      "Traditional medicine is fine for minor issues, but I want antibiotics when I'm really sick.",
+      "People romanticize traditional medicine while forgetting modern medicine doubled our lifespans.",
+      "The 'natural' argument makes no sense. Arsenic is natural too, doesn't mean it's good for you.",
+      "If traditional medicine worked consistently, it would just be called 'medicine'."
+    ]
+  },
+  "generic": {
+    believer: [
+      "I've done extensive research on this topic and the evidence is clear.",
+      "Once you understand the underlying mechanisms, it's obvious why this matters.",
+      "This has affected my life personally, so I know firsthand how significant it is.",
+      "The data speaks for itself - this is something we need to take seriously.",
+      "I was skeptical at first too, but after looking into it, I'm convinced."
+    ],
+    skeptic: [
+      "Everyone's jumping on this bandwagon without questioning the basic assumptions.",
+      "I need to see more evidence before I buy into what everyone's claiming.",
+      "This feels like the same hysteria we saw with [previous trend] all over again.",
+      "Let's take a step back and look at this critically before making judgments.",
+      "I've heard these claims before and they rarely hold up to scrutiny."
+    ]
+  }
+};
+
 // Select a random topic from the list
 export const getRandomTopic = (): string => {
   const index = Math.floor(Math.random() * discussionTopics.length);
   return discussionTopics[index];
+};
+
+// Find a conversation starter for the given topic
+const getConversationStarter = (topic: string): string => {
+  const topicKey = topic as keyof typeof conversationStarters;
+  
+  if (conversationStarters[topicKey]) {
+    const starters = conversationStarters[topicKey];
+    return starters[Math.floor(Math.random() * starters.length)];
+  } else {
+    const genericStarters = conversationStarters.generic;
+    let starter = genericStarters[Math.floor(Math.random() * genericStarters.length)];
+    return starter.replace("this topic", topic).replace("this", topic);
+  }
 };
 
 /**
@@ -131,9 +630,6 @@ export const generateRandomTraits = (): BigFiveTraits => ({
  * @returns Susceptibility score between 0 and 1
  */
 export const calculateSusceptibility = (traits: BigFiveTraits): number => {
-  // Higher agreeableness and neuroticism increase susceptibility
-  // Higher conscientiousness decreases susceptibility
-  // Openness and extraversion have mixed effects
   return (
     0.4 * traits.agreeableness +
     0.3 * traits.neuroticism +
@@ -202,156 +698,277 @@ export const generateThought = (agent: Agent): string => {
 };
 
 /**
- * Generate a message from an agent based on their personality, beliefs, thought, and current topic
- * @param agent The agent sending the message
- * @param receiverId The recipient agent id (null for broadcast)
- * @returns A message object
+ * Get a communication style for an agent based on their personality traits
+ * @param agent The agent to determine communication style for
+ * @returns A communication style object with templates
  */
-export const generateMessage = (agent: Agent, receiverId: number | null = null): Message => {
-  const { traits, believer, id, thoughtState, name, gender, currentTopic } = agent;
-  const { openness, conscientiousness, extraversion, agreeableness, neuroticism } = traits;
+const getCommunicationStyle = (agent: Agent) => {
+  const { traits } = agent;
   
-  // Topic-specific messages based on the current network topic
-  let topicMessages = [];
-  if (currentTopic) {
-    if (believer) {
-      topicMessages = [
-        `What do you all think about ${currentTopic}? I've been reading about it and think it's really important.`,
-        `Has anyone been following the news about ${currentTopic}? I found some interesting articles!`,
-        `I was just talking to my friend about ${currentTopic} yesterday. It's such a relevant issue.`,
-        `${currentTopic} is something we need to take seriously. I've seen its effects firsthand.`,
-        `Let's discuss ${currentTopic} - I think there's a lot of misinformation going around.`,
-        `Anyone have strong opinions on ${currentTopic}? I'm definitely in favor of addressing it.`,
-        `My cousin works in a field related to ${currentTopic} and says we should all be concerned.`,
-        `Does anyone else find ${currentTopic} fascinating? I can't stop reading about it!`,
-        `I'm convinced that ${currentTopic} will be one of the defining issues of our generation.`,
-        `We need more awareness about ${currentTopic}, not enough people understand its importance.`
-      ];
-    } else {
-      topicMessages = [
-        `I don't get the hype around ${currentTopic}. Is it really that big of a deal?`,
-        `People are overreacting about ${currentTopic} IMO. Let's be rational here.`,
-        `I've been researching ${currentTopic} and I'm not convinced by what I'm seeing.`,
-        `Can someone explain why ${currentTopic} matters so much? I'm genuinely curious.`,
-        `My friend who's an expert says ${currentTopic} is being blown out of proportion.`,
-        `I used to worry about ${currentTopic} until I actually looked into the facts.`,
-        `Let's be skeptical about what we hear regarding ${currentTopic}.`,
-        `Does anyone have reliable sources about ${currentTopic}? Not just social media posts?`,
-        `I think we need more evidence before jumping to conclusions about ${currentTopic}.`,
-        `I'm keeping an open mind about ${currentTopic}, but so far I'm not convinced.`
-      ];
+  // Determine primary personality characteristics
+  const traitValues = [
+    { trait: 'openness', value: traits.openness },
+    { trait: 'conscientiousness', value: traits.conscientiousness },
+    { trait: 'extraversion', value: traits.extraversion },
+    { trait: 'agreeableness', value: traits.agreeableness },
+    { trait: 'neuroticism', value: traits.neuroticism }
+  ];
+  
+  // Sort traits from highest to lowest
+  traitValues.sort((a, b) => b.value - a.value);
+  
+  // Map dominant traits to communication styles with some randomness
+  let styles = [];
+  
+  // Primary trait influence
+  if (traitValues[0].value > 0.7) {
+    switch(traitValues[0].trait) {
+      case 'openness':
+        styles.push('intellectual', 'storyteller');
+        break;
+      case 'conscientiousness':
+        styles.push('intellectual', 'skeptical');
+        break;
+      case 'extraversion':
+        styles.push('humorous', 'enthusiastic', 'storyteller');
+        break;
+      case 'agreeableness':
+        styles.push('supportive', 'casual');
+        break;
+      case 'neuroticism':
+        styles.push('reactionary', 'contrarian');
+        break;
     }
   }
   
-  // Varied message templates for believers with conversational language
-  const believerTemplates = [
-    `I think this is definitely true because my cousin experienced something similar!`,
-    `Have you seen the latest evidence? It's pretty convincing tbh`,
-    `I was skeptical at first but now I'm totally on board with this`,
-    `This makes a lot of sense when you think about it...`,
-    `I read about this yesterday and it clicked for me`,
-    `I can't believe more people don't see this is real`,
-    `My friend showed me proof and I was like... wow`,
-    `This explains so many things that were confusing me before`,
-    `I've been saying this for ages, glad others are catching on`,
-    `Trust me, there's solid evidence behind this`
-  ];
+  // Secondary trait influence
+  if (traitValues[1].value > 0.6) {
+    switch(traitValues[1].trait) {
+      case 'openness':
+        styles.push('intellectual');
+        break;
+      case 'conscientiousness':
+        styles.push('skeptical');
+        break;
+      case 'extraversion':
+        styles.push('humorous', 'enthusiastic');
+        break;
+      case 'agreeableness':
+        styles.push('supportive');
+        break;
+      case 'neuroticism':
+        styles.push('reactionary');
+        break;
+    }
+  }
   
-  // Varied message templates for non-believers with conversational language
-  const nonBelieverTemplates = [
-    `I'm not buying it, seems like people are jumping to conclusions`,
-    `Has anyone actually verified this from reliable sources?`,
-    `I checked the facts and they don't add up at all`,
-    `This sounds like another internet rumor tbh`,
-    `I need way more proof before I believe something like this`,
-    `My cousin works in this field and says it's completely false`,
-    `People will believe anything these days 🙄`,
-    `I used to think this was true until I did my research`,
-    `This has been debunked so many times already`,
-    `Let's be real, this doesn't make any logical sense`
-  ];
+  // Add randomness - sometimes people communicate in unexpected ways
+  if (Math.random() > 0.7) {
+    const allStyles = Object.keys(communicationStyles);
+    styles.push(allStyles[Math.floor(Math.random() * allStyles.length)]);
+  }
+  
+  // Ensure we have at least one style
+  if (styles.length === 0) {
+    styles.push('casual');
+  }
+  
+  // Select a random style from the agent's possible styles
+  const styleKey = styles[Math.floor(Math.random() * styles.length)] as keyof typeof communicationStyles;
+  return communicationStyles[styleKey];
+};
 
-  // Casual intros to make messages sound more natural
-  const casualIntros = [
-    "",
-    "Hey! ",
-    "So... ",
-    "Guys, ",
-    "Listen, ",
-    "TBH ",
-    "IMO ",
-    "Not gonna lie, ",
-    "Just saying, ",
-    "FYI - "
-  ];
+/**
+ * Find the name of a specific agent
+ */
+const getAgentName = (id: number, network: Network): string => {
+  const agent = network.nodes.find(a => a.id === id);
+  return agent ? agent.name : `Agent #${id}`;
+};
+
+/**
+ * Generate a message from an agent based on their personality, beliefs, thought, and current topic
+ * This enhanced version creates more conversational, responsive messages
+ * @param agent The agent sending the message
+ * @param receiverId The recipient agent id (null for broadcast)
+ * @param network Current network state for context
+ * @param isFirstMessage Whether this is the first message in a conversation
+ * @returns A message object
+ */
+export const generateMessage = (
+  agent: Agent, 
+  receiverId: number | null = null,
+  network?: Network,
+  isReplyTo?: Message
+): Message => {
+  const { traits, believer, id, thoughtState, name, gender, currentTopic } = agent;
   
-  // Conversational endings
-  const conversationalEndings = [
-    "",
-    " What do you all think?",
-    " Agree?",
-    " Am I wrong?",
-    " Thoughts?",
-    " Anyone else feel this way?",
-    " Just my two cents.",
-    " Sorry if that's controversial!",
-    " That's my take anyway.",
-    " I might be wrong tho."
-  ];
+  // Get communication style based on agent's personality
+  const communicationStyle = getCommunicationStyle(agent);
   
-  // Add emojis occasionally
-  const emojis = [
-    "",
-    " 😊",
-    " 🤔",
-    " 👀",
-    " 💯",
-    " 🙌",
-    " 😂",
-    " 👍",
-    " 🤷‍♀️",
-    " 🤦‍♂️"
-  ];
-  
-  // Select topic-based message if available, otherwise use general templates
-  const templates = currentTopic ? 
-    (topicMessages.length > 0 ? topicMessages : (believer ? believerTemplates : nonBelieverTemplates)) : 
-    (believer ? believerTemplates : nonBelieverTemplates);
+  let messageContent = "";
+  const replyToSender = isReplyTo ? isReplyTo.senderId : null;
+  const replyToSenderName = replyToSender !== null && network 
+    ? getAgentName(replyToSender, network) 
+    : null;
     
-  const baseIndex = Math.floor(Math.random() * templates.length);
-  
-  // Add random conversational elements
-  const intro = casualIntros[Math.floor(Math.random() * casualIntros.length)];
-  const ending = conversationalEndings[Math.floor(Math.random() * conversationalEndings.length)];
-  const emoji = Math.random() > 0.7 ? emojis[Math.floor(Math.random() * emojis.length)] : "";
-  
-  // Construct the message with natural phrasing
-  let content = `${name}: ${intro}${templates[baseIndex]}${emoji}${ending}`;
-  
-  // Modify message based on personality traits but keep it subtle
-  if (traits.agreeableness > 0.8 && Math.random() > 0.5) {
-    content = `${content} (I respect everyone's opinions on this though!)`;
+  // If this is a reply and we have the other message to reference
+  if (isReplyTo && replyToSenderName) {
+    // Choose between agreement and disagreement
+    const isAgreeing = (
+      // More likely to agree if same belief
+      (isReplyTo.belief === agent.believer && Math.random() > 0.3) || 
+      // Less likely to agree if different belief
+      (isReplyTo.belief !== agent.believer && Math.random() > 0.7) ||
+      // Most agreeable people are more likely to agree regardless
+      (agent.traits.agreeableness > 0.8 && Math.random() > 0.5)
+    );
+    
+    // Get the appropriate reply template
+    let replyTemplates = isAgreeing 
+      ? communicationStyle.agreements 
+      : communicationStyle.disagreements;
+      
+    // Select and format reply
+    if (replyTemplates && replyTemplates.length > 0) {
+      const templateIndex = Math.floor(Math.random() * replyTemplates.length);
+      let template = replyTemplates[templateIndex];
+      
+      // Replace placeholders
+      template = template
+        .replace(/\{name\}/g, replyToSenderName)
+        .replace(/\{topic\}/g, currentTopic || "this topic");
+        
+      messageContent = template;
+    } else {
+      // Fall back to a generic reply
+      messageContent = `@${replyToSenderName} ${isAgreeing ? "I agree. " : "I'm not sure about that. "}`;
+    }
+  } else {
+    // This is either a new conversation or a general message
+    
+    // Determine message content based on topic and belief
+    let templates = [];
+    
+    if (currentTopic) {
+      // Get topic-specific templates if available
+      const topicKey = currentTopic as keyof typeof topicSpecificTemplates;
+      if (topicSpecificTemplates[topicKey]) {
+        templates = believer 
+          ? topicSpecificTemplates[topicKey].believer 
+          : topicSpecificTemplates[topicKey].skeptic;
+      } else {
+        // Fall back to generic templates
+        templates = believer 
+          ? topicSpecificTemplates.generic.believer 
+          : topicSpecificTemplates.generic.skeptic;
+      }
+    } else {
+      // Fall back to style-specific templates
+      templates = communicationStyle.templates;
+    }
+    
+    // For the very first message in a conversation, use a conversation starter
+    if (!isReplyTo && network && network.messageLog.length === 0) {
+      messageContent = getConversationStarter(currentTopic || "");
+    } else {
+      // Select a random template
+      let templateIndex = Math.floor(Math.random() * templates.length);
+      let messageTemplate = templates[templateIndex];
+      
+      // Replace {topic} placeholder with actual topic
+      messageTemplate = messageTemplate.replace(/\{topic\}/g, currentTopic || "this topic");
+      
+      // Replace {random_comparison} if present
+      if (messageTemplate.includes("{random_comparison}")) {
+        const comparison = randomComparisons[Math.floor(Math.random() * randomComparisons.length)];
+        messageTemplate = messageTemplate.replace(/\{random_comparison\}/g, comparison);
+      }
+      
+      // Add communication style elements
+      const intro = communicationStyle.intros[Math.floor(Math.random() * communicationStyle.intros.length)];
+      messageContent = intro + messageTemplate;
+    }
   }
   
-  if (traits.neuroticism > 0.8 && Math.random() > 0.6) {
-    content = `${content} I get so stressed thinking about this stuff...`;
+  // Add ending occasionally
+  if (Math.random() > 0.5) {
+    const ending = communicationStyle.endings[Math.floor(Math.random() * communicationStyle.endings.length)];
+    messageContent += ending;
   }
   
-  if (traits.extraversion > 0.8 && Math.random() > 0.6) {
-    content = `${content} EVERYONE NEEDS TO KNOW ABOUT THIS!!`;
+  // Add emojis occasionally based on communication style
+  if (Math.random() > 0.6) {
+    const emojis = {
+      humorous: ["😂", "🤣", "😅", "🙈", "💀"],
+      intellectual: ["🤔", "📚", "💭", "🧐", "🔍"],
+      skeptical: ["🤨", "🧐", "👀", "🙄", "🤷‍♀️"],
+      enthusiastic: ["✨", "🙌", "💯", "🤩", "🔥"],
+      casual: ["👍", "😊", "👋", "🙂", "✌️"],
+      contrarian: ["😏", "🤐", "⚠️", "🚫", "👊"],
+      supportive: ["❤️", "🤗", "🥰", "💪", "✨"],
+      storyteller: ["📖", "🗣️", "✨", "👴", "👵"],
+      reactionary: ["😱", "😮", "⚡", "❗", "⁉️"]
+    };
+    
+    // Get emojis for the selected style or default to casual
+    const styleKey = Object.keys(emojis).find(key => key === communicationStyle) || "casual";
+    const emojiList = emojis[styleKey as keyof typeof emojis];
+    const emoji = emojiList[Math.floor(Math.random() * emojiList.length)];
+    
+    // Add emoji at a natural location
+    if (Math.random() > 0.5 && messageContent.includes(".")) {
+      // Add after a sentence
+      const sentences = messageContent.split(".");
+      if (sentences.length > 1) {
+        const randomSentenceIndex = Math.floor(Math.random() * (sentences.length - 1));
+        sentences[randomSentenceIndex] += emoji;
+        messageContent = sentences.join(".");
+      } else {
+        messageContent += " " + emoji;
+      }
+    } else {
+      // Add at the end
+      messageContent += " " + emoji;
+    }
   }
   
-  if (traits.openness > 0.8 && Math.random() > 0.7) {
-    content = `${content} I'm open to changing my mind if someone shows me good evidence.`;
-  }
+  // Construct complete message
+  let content = `${name}: ${messageContent}`;
   
-  if (traits.conscientiousness > 0.8 && Math.random() > 0.7) {
-    content = `${content} I've been researching this carefully for a while now.`;
-  }
-
-  // Add thought if available (with probability to make it more natural)
-  if (thoughtState && Math.random() > 0.7) {
+  // Add thought if available (with low probability to make it more natural)
+  if (thoughtState && Math.random() > 0.85) {
     content = `${content} (Thinking to myself: "${thoughtState}")`;
+  }
+  
+  // For lengthy conversation, occasionally reference previous context
+  if (network && 
+      network.messageLog.length > 5 && 
+      Math.random() > 0.85 && 
+      !isReplyTo && 
+      network.messageLog.length > 0) {
+    
+    // Get a random earlier message to reference
+    const earlierMessages = network.messageLog.slice(0, -3); // Exclude very recent messages
+    if (earlierMessages.length > 0) {
+      const randomEarlierMsg = earlierMessages[Math.floor(Math.random() * earlierMessages.length)];
+      const randomMsgSenderId = randomEarlierMsg.senderId;
+      
+      // Only reference if it's not the current agent
+      if (randomMsgSenderId !== id) {
+        const randomSenderName = getAgentName(randomMsgSenderId, network);
+        const referenceComments = [
+          `Going back to what @${randomSenderName} said earlier...`,
+          `@${randomSenderName} mentioned something related a while ago.`,
+          `This reminds me of @${randomSenderName}'s point from before.`,
+          `Like @${randomSenderName} was saying earlier...`,
+          `To build on what @${randomSenderName} said...`
+        ];
+        
+        const referenceComment = referenceComments[Math.floor(Math.random() * referenceComments.length)];
+        content = `${content}\n\n${referenceComment}`;
+      }
+    }
   }
 
   return {
@@ -361,7 +978,8 @@ export const generateMessage = (agent: Agent, receiverId: number | null = null):
     timestamp: Date.now(),
     content,
     belief: believer,
-    topic: currentTopic
+    topic: currentTopic,
+    replyToId: isReplyTo?.id
   };
 };
 
@@ -445,7 +1063,8 @@ export const initializeAgents = (
       messages: [],
       receivedMessages: [],
       currentTopic: simulationTopic, // Set the same topic for all agents
-      traitHistory: [] // Initialize as empty array
+      traitHistory: [], // Initialize as empty array
+      messageContextMemory: [] // Initialize context memory
     });
   }
 
@@ -707,44 +1326,92 @@ export const createNetwork = (
 };
 
 /**
- * Exchange messages between agents in the network
+ * Exchange messages between agents in the network with more realistic conversation patterns
  * @param network Current network state
  * @returns Updated network with exchanged messages
  */
 export const exchangeMessages = (network: Network): Network => {
   const updatedNetwork = { ...network };
   const newMessages: Message[] = [];
-
-  // Each agent generates and sends messages
-  updatedNetwork.nodes.forEach((agent) => {
-    // Generate a new thought state
-    agent.thoughtState = generateThought(agent);
+  
+  // If this is a new conversation, have someone start with a conversation starter
+  if (network.messageLog.length === 0) {
+    // Choose a random agent to start the conversation
+    const randomAgentIndex = Math.floor(Math.random() * network.nodes.length);
+    const startingAgent = updatedNetwork.nodes[randomAgentIndex];
     
-    // Send messages to neighbors (weighted by extraversion)
-    const messageCount = Math.floor(agent.traits.extraversion * 3) + 1;
+    // Generate and send opening message
+    const message = generateMessage(startingAgent, null, updatedNetwork);
+    startingAgent.messages.push(message);
+    newMessages.push(message);
     
-    for (let i = 0; i < messageCount; i++) {
-      if (agent.neighbors.length > 0) {
-        // Choose a random neighbor
-        const neighborIndex = Math.floor(Math.random() * agent.neighbors.length);
-        const receiverId = agent.neighbors[neighborIndex];
+    // Add message to everyone's inbox (broadcast)
+    updatedNetwork.nodes.forEach(agent => {
+      if (agent.id !== startingAgent.id) {
+        agent.receivedMessages.push(message);
+      }
+    });
+  } else {
+    // Continuing conversation - some agents will respond to previous messages
+    
+    // Get recent messages to respond to
+    const recentMessages = network.messageLog.slice(Math.max(0, network.messageLog.length - 5));
+    
+    // Each agent might generate a reply or a new message
+    updatedNetwork.nodes.forEach((agent) => {
+      // Generate a new thought state
+      agent.thoughtState = generateThought(agent);
+      
+      // Chance to participate based on extraversion and randomness
+      const participationChance = 0.2 + agent.traits.extraversion * 0.4;
+      
+      if (Math.random() < participationChance) {
+        // Decide whether to reply to an existing message or post a new one
+        const willReply = recentMessages.length > 0 && Math.random() < 0.7;
         
-        // Generate and send message
-        const message = generateMessage(agent, receiverId);
-        agent.messages.push(message);
-        newMessages.push(message);
-        
-        // Add message to receiver's inbox
-        const receiver = updatedNetwork.nodes.find(a => a.id === receiverId);
-        if (receiver) {
-          receiver.receivedMessages.push(message);
+        if (willReply) {
+          // Pick a message to reply to
+          const messageToReplyTo = recentMessages[Math.floor(Math.random() * recentMessages.length)];
+          
+          // Don't reply to your own message (usually)
+          if (messageToReplyTo.senderId !== agent.id || Math.random() < 0.1) {
+            // Generate and send reply
+            const message = generateMessage(agent, null, updatedNetwork, messageToReplyTo);
+            agent.messages.push(message);
+            newMessages.push(message);
+            
+            // Add message to everyone's inbox (broadcast)
+            updatedNetwork.nodes.forEach(otherAgent => {
+              if (otherAgent.id !== agent.id) {
+                otherAgent.receivedMessages.push(message);
+              }
+            });
+          }
+        } else {
+          // Generate and send a new message
+          const message = generateMessage(agent, null, updatedNetwork);
+          agent.messages.push(message);
+          newMessages.push(message);
+          
+          // Add message to everyone's inbox (broadcast)
+          updatedNetwork.nodes.forEach(otherAgent => {
+            if (otherAgent.id !== agent.id) {
+              otherAgent.receivedMessages.push(message);
+            }
+          });
         }
       }
-    }
-  });
-
-  // Add all new messages to the log
-  updatedNetwork.messageLog = [...updatedNetwork.messageLog, ...newMessages];
+    });
+  }
+  
+  // Limit the number of new messages per step for readability
+  const maxMessagesPerStep = 3;
+  const selectedMessages = newMessages.length <= maxMessagesPerStep 
+    ? newMessages 
+    : newMessages.sort(() => Math.random() - 0.5).slice(0, maxMessagesPerStep);
+  
+  // Add selected messages to the log
+  updatedNetwork.messageLog = [...updatedNetwork.messageLog, ...selectedMessages];
   
   return updatedNetwork;
 };
@@ -885,14 +1552,14 @@ export const generateExportData = (network: Network): string => {
  */
 export const generateMessageLogExport = (network: Network): string => {
   // CSV header
-  let csv = "message_id,sender_id,receiver_id,timestamp,belief_state,content\n";
+  let csv = "message_id,sender_id,receiver_id,timestamp,belief_state,content,reply_to_id\n";
   
   // Add data for each message
   network.messageLog.forEach((message) => {
     // Escape quotes in content
     const safeContent = message.content.replace(/"/g, '""');
     
-    csv += `${message.id},${message.senderId},${message.receiverId || "broadcast"},${message.timestamp},${message.belief ? 1 : 0},"${safeContent}"\n`;
+    csv += `${message.id},${message.senderId},${message.receiverId || "broadcast"},${message.timestamp},${message.belief ? 1 : 0},"${safeContent}",${message.replyToId || ""}\n`;
   });
   
   return csv;
