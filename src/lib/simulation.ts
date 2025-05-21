@@ -937,8 +937,11 @@ export const generateMessage = (
     };
     
     // Get emojis for the selected style or default to casual
-    const styleKey = Object.keys(emojis).find(key => key === communicationStyle) || "casual";
-    const emojiList = emojis[styleKey as keyof typeof emojis];
+    const styleType = Object.keys(communicationStyles).find(key => 
+      communicationStyles[key as keyof typeof communicationStyles] === communicationStyle
+    ) || "casual";
+    
+    const emojiList = emojis[styleType as keyof typeof emojis];
     const emoji = emojiList[Math.floor(Math.random() * emojiList.length)];
     
     // Add emoji at a natural location
