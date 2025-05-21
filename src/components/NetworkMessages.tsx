@@ -25,6 +25,31 @@ const NetworkMessages: React.FC<NetworkMessagesProps> = ({
   const lastMessageCountRef = useRef<number>(0);
   const processingRef = useRef<boolean>(false);
   const networkMessageIdsRef = useRef<Set<string>>(new Set());
+  const conversationContextRef = useRef<{
+    recentTopics: string[],
+    lastSpeakers: string[],
+    messageTypes: {
+      opinion: number,
+      question: number,
+      agreement: number,
+      disagreement: number,
+      joke: number,
+      story: number,
+      offtopic: number
+    }
+  }>({
+    recentTopics: [],
+    lastSpeakers: [],
+    messageTypes: {
+      opinion: 0,
+      question: 0,
+      agreement: 0,
+      disagreement: 0,
+      joke: 0,
+      story: 0,
+      offtopic: 0
+    }
+  });
   
   // Get all messages from the network log
   const allMessages = network.messageLog;
@@ -47,6 +72,21 @@ const NetworkMessages: React.FC<NetworkMessagesProps> = ({
       networkMessageIdsRef.current.clear();
       cancelSpeech();
       
+      // Reset conversation context
+      conversationContextRef.current = {
+        recentTopics: [],
+        lastSpeakers: [],
+        messageTypes: {
+          opinion: 0,
+          question: 0,
+          agreement: 0,
+          disagreement: 0,
+          joke: 0,
+          story: 0,
+          offtopic: 0
+        }
+      };
+      
       if (messageTimerRef.current) {
         clearTimeout(messageTimerRef.current);
         messageTimerRef.current = null;
@@ -59,11 +99,67 @@ const NetworkMessages: React.FC<NetworkMessagesProps> = ({
       return;
     }
 
+    // Track conversation context - update based on new messages
+    const updateConversationContext = (message: Message) => {
+      // Extract message content without agent name prefix
+      let content = message.content;
+      const colonIndex = content.indexOf(':');
+      if (colonIndex > 0) {
+        content = content.substring(colonIndex + 1).trim();
+      }
+      
+      // Record speaker
+      const speakerName = message.senderId.toString();
+      if (!conversationContextRef.current.lastSpeakers.includes(speakerName)) {
+        conversationContextRef.current.lastSpeakers = 
+          [speakerName, ...conversationContextRef.current.lastSpeakers].slice(0, 5);
+      }
+      
+      // Simple message classification
+      if (content.includes('?')) {
+        conversationContextRef.current.messageTypes.question++;
+      } else if (content.includes('agree') || content.includes('true') || content.startsWith('Yes')) {
+        conversationContextRef.current.messageTypes.agreement++;
+      } else if (content.includes('disagree') || content.includes('not true') || content.startsWith('No')) {
+        conversationContextRef.current.messageTypes.disagreement++;
+      } else if (content.includes('😂') || content.includes('🤣') || content.includes('haha') || content.includes('lol')) {
+        conversationContextRef.current.messageTypes.joke++;
+      } else if (content.includes('I think') || content.includes('In my opinion')) {
+        conversationContextRef.current.messageTypes.opinion++;
+      } else if (content.includes('story') || content.includes('happened to me')) {
+        conversationContextRef.current.messageTypes.story++;
+      }
+      
+      // Extract potential discussion topics
+      const words = content.split(' ');
+      const potentialTopics = words.filter(word => 
+        word.length > 5 && !word.includes('http') && !['about', 'things', 'something', 'actually'].includes(word.toLowerCase())
+      );
+      
+      if (potentialTopics.length > 0) {
+        const newTopic = potentialTopics[Math.floor(Math.random() * potentialTopics.length)]
+          .replace(/[.,!?;:]/g, '');
+        if (newTopic && newTopic.length > 0 && !conversationContextRef.current.recentTopics.includes(newTopic)) {
+          conversationContextRef.current.recentTopics = 
+            [newTopic, ...conversationContextRef.current.recentTopics].slice(0, 5);
+        }
+      }
+      
+      // Track current topic from network
+      if (network.currentTopic && !conversationContextRef.current.recentTopics.includes(network.currentTopic)) {
+        conversationContextRef.current.recentTopics.unshift(network.currentTopic);
+        conversationContextRef.current.recentTopics = conversationContextRef.current.recentTopics.slice(0, 5);
+      }
+    };
+
     // Check for new messages in the network log
     const newMessages = network.messageLog.filter(msg => !networkMessageIdsRef.current.has(msg.id));
     
     if (newMessages.length > 0) {
       console.log(`Found ${newMessages.length} new messages to process`);
+      
+      // Update conversation context with new messages
+      newMessages.forEach(updateConversationContext);
       
       // If no messages are currently visible or processing, display the first message immediately
       if (visibleMessages.length === 0 && !processingRef.current) {
@@ -82,7 +178,7 @@ const NetworkMessages: React.FC<NetworkMessagesProps> = ({
         processNextMessage();
       }
     }
-  }, [network.messageLog, isRunning]);
+  }, [network.messageLog, isRunning, network.currentTopic]);
   
   // Clean up on unmount
   useEffect(() => {
