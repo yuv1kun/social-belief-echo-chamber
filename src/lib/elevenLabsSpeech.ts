@@ -55,6 +55,12 @@ export const clearApiKey = (): void => {
   localStorage.removeItem('elevenlabs_api_key');
 };
 
+// Validate API key format - basic check
+export const isValidApiKey = (key: string): boolean => {
+  // Simple validation: ElevenLabs keys are typically alphanumeric and at least 32 characters
+  return /^[a-zA-Z0-9]{32,}$/.test(key);
+};
+
 // Initialize the TTS service
 export const initializeTTS = (): void => {
   // Check for saved API key
@@ -97,6 +103,7 @@ const speak = async (
 ): Promise<void> => {
   if (!apiKey) {
     console.warn('ElevenLabs API key not set');
+    toast.error("ElevenLabs API key not set. Please add your API key in settings.");
     if (onEnd) onEnd();
     return;
   }
@@ -112,6 +119,8 @@ const speak = async (
   const actualVoiceId = VOICE_IDS[voice] || voice;
   
   try {
+    console.log("Starting TTS request with ElevenLabs API...");
+    
     // Create a new audio element
     if (audioElement) {
       audioElement.pause();
@@ -140,8 +149,22 @@ const speak = async (
     });
 
     if (!response.ok) {
-      throw new Error(`ElevenLabs API error: ${response.status} ${response.statusText}`);
+      const errorMessage = `ElevenLabs API error: ${response.status} ${response.statusText}`;
+      console.error(errorMessage);
+      
+      // Show appropriate error based on status code
+      if (response.status === 401) {
+        toast.error("Invalid ElevenLabs API key. Please check your settings.");
+      } else if (response.status === 429) {
+        toast.error("ElevenLabs rate limit exceeded. Please try again later.");
+      } else {
+        toast.error(`ElevenLabs API error: ${response.status}`);
+      }
+      
+      throw new Error(errorMessage);
     }
+
+    console.log("ElevenLabs API response received successfully");
 
     // Convert the response to a blob
     const blob = await response.blob();
@@ -152,10 +175,12 @@ const speak = async (
     
     // Set event handlers
     audioElement.onplay = () => {
+      console.log("Audio playback started");
       if (onStart) onStart();
     };
     
     audioElement.onended = () => {
+      console.log("Audio playback finished");
       if (onEnd) onEnd();
       URL.revokeObjectURL(audioUrl);
     };
@@ -167,8 +192,10 @@ const speak = async (
     };
     
     // Start playing
+    console.log("Starting audio playback");
     audioElement.play().catch(err => {
       console.error('Could not play audio:', err);
+      toast.error("Failed to play audio. Please try again.");
       if (onEnd) onEnd();
     });
     
