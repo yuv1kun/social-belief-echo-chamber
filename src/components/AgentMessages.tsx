@@ -67,9 +67,9 @@ const AgentMessages: React.FC<AgentMessagesProps> = ({
           <div className="flex flex-col gap-1">
             {currentTopic && (
               <div className="flex items-center gap-2 mb-1">
-                <Badge variant="outline" className="bg-slate-100">
-                  <span className="text-black">Topic: {currentTopic}</span>
-                </Badge>
+                <span className="bg-slate-100 px-2 py-0.5 rounded-md text-sm">
+                  Topic: {currentTopic}
+                </span>
               </div>
             )}
             <div>
@@ -111,7 +111,7 @@ const AgentMessages: React.FC<AgentMessagesProps> = ({
                             <>To {message.receiverId !== null ? `Agent #${message.receiverId}` : "Everyone"}</>
                           )}
                         </span>
-                        <Badge variant={message.belief ? "default" : "secondary"} className="text-xs inline-flex items-center">
+                        <Badge variant={message.belief ? "default" : "secondary"} className="text-xs">
                           {message.belief ? "Believer" : "Skeptic"}
                         </Badge>
                       </div>

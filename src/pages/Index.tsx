@@ -27,8 +27,8 @@ import { Button } from "@/components/ui/button";
 import { MessageCircle, Settings } from "lucide-react";
 import { initializeTTS, cancelSpeech, getApiKey } from "@/lib/elevenLabsSpeech";
 
-// Simulation step interval in milliseconds (5 seconds)
-const STEP_INTERVAL = 5000;
+// Simulation step interval in milliseconds (adjusted to 7.5 seconds to allow time for message processing)
+const STEP_INTERVAL = 7500;
 
 const Index = () => {
   // Simulation state
@@ -53,7 +53,7 @@ const Index = () => {
   const [runInterval, setRunInterval] = useState<number | null>(null);
   const [historyData, setHistoryData] = useState<any[]>([]);
   const [showSettings, setShowSettings] = useState(false);
-  const [isProcessingMessage, setIsProcessingMessage] = useState(false); // New state for tracking message processing
+  const [isProcessingMessage, setIsProcessingMessage] = useState(false); // Track message processing
   const [statistics, setStatistics] = useState({
     totalAgents: 0,
     believers: 0,
@@ -93,6 +93,9 @@ const Index = () => {
         config.networkType,
         config.networkDensity
       );
+
+      // Set the topic in the network
+      newNetwork.currentTopic = simulationTopic;
 
       setNetwork(newNetwork);
       setSelectedAgentId(null);
@@ -138,14 +141,21 @@ const Index = () => {
       return;
     }
 
-    // Skip if we're currently processing a message
+    // Only continue if not processing a message
     if (isProcessingMessage) {
+      console.log("Skipping step while processing message");
       return;
     }
 
     try {
+      console.log("Running belief propagation step", config.currentStep + 1);
       // Run one step of belief propagation
       const updatedNetwork = runBeliefPropagationStep(network);
+      
+      // Verify that messages were added
+      console.log("Messages before step:", network.messageLog.length);
+      console.log("Messages after step:", updatedNetwork.messageLog.length);
+      
       setNetwork(updatedNetwork);
       setConfig((prev) => ({
         ...prev,
@@ -183,6 +193,9 @@ const Index = () => {
   // Handle running the simulation continuously
   const handleRunContinuous = useCallback(() => {
     setIsRunning(true);
+    // Start with one step immediately
+    handleStep();
+    
     const interval = window.setInterval(() => {
       handleStep();
     }, STEP_INTERVAL);
@@ -259,6 +272,7 @@ const Index = () => {
 
   // Handle message processing status changes
   const handleMessageProcessing = useCallback((isProcessing: boolean) => {
+    console.log("Message processing status changed:", isProcessing);
     setIsProcessingMessage(isProcessing);
   }, []);
 
