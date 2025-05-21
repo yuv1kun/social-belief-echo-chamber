@@ -27,8 +27,8 @@ import { Button } from "@/components/ui/button";
 import { MessageCircle, Settings } from "lucide-react";
 import { initializeTTS, cancelSpeech, getApiKey } from "@/lib/elevenLabsSpeech";
 
-// Simulation step interval in milliseconds (adjusted to 7.5 seconds to allow time for message processing)
-const STEP_INTERVAL = 7500;
+// Simulation step interval in milliseconds (adjusted to 10 seconds to allow time for message processing)
+const STEP_INTERVAL = 10000;
 
 const Index = () => {
   // Simulation state
@@ -96,6 +96,9 @@ const Index = () => {
 
       // Set the topic in the network
       newNetwork.currentTopic = simulationTopic;
+      
+      // Ensure message log is empty
+      newNetwork.messageLog = [];
 
       setNetwork(newNetwork);
       setSelectedAgentId(null);
@@ -148,15 +151,33 @@ const Index = () => {
     }
 
     try {
-      console.log("Running belief propagation step", config.currentStep + 1);
+      console.log(`Running belief propagation step ${config.currentStep + 1} of ${config.steps}`);
+      
       // Run one step of belief propagation
       const updatedNetwork = runBeliefPropagationStep(network);
       
-      // Verify that messages were added
-      console.log("Messages before step:", network.messageLog.length);
-      console.log("Messages after step:", updatedNetwork.messageLog.length);
+      // Log message counts for debugging
+      console.log(`Messages before step: ${network.messageLog.length}`);
+      console.log(`Messages after step: ${updatedNetwork.messageLog.length}`);
+      console.log(`New messages: ${updatedNetwork.messageLog.length - network.messageLog.length}`);
       
-      setNetwork(updatedNetwork);
+      // Ensure message IDs are preserved
+      const newMessages = updatedNetwork.messageLog.filter(
+        newMsg => !network.messageLog.some(oldMsg => oldMsg.id === newMsg.id)
+      );
+      console.log(`Filtered new messages: ${newMessages.length}`);
+      
+      // For debugging, log content of first new message if available
+      if (newMessages.length > 0) {
+        console.log(`First new message: Agent #${newMessages[0].senderId} says "${newMessages[0].content}"`);
+      }
+      
+      setNetwork(prev => ({
+        ...updatedNetwork,
+        // Ensure we don't lose any messages if there's a race condition
+        messageLog: [...prev.messageLog, ...newMessages]
+      }));
+      
       setConfig((prev) => ({
         ...prev,
         currentStep: prev.currentStep + 1,

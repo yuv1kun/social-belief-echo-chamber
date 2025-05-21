@@ -74,7 +74,7 @@ const AgentMessages: React.FC<AgentMessagesProps> = ({
             )}
             <div>
               {messages.length > 0 
-                ? `${messages.length} messages` 
+                ? `${messages.length} message${messages.length === 1 ? '' : 's'}` 
                 : "No messages yet"}
             </div>
           </div>

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AgentMessages from "./AgentMessages";
@@ -23,6 +24,7 @@ const NetworkMessages: React.FC<NetworkMessagesProps> = ({
   const messageTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastMessageCountRef = useRef<number>(0);
   const processingRef = useRef<boolean>(false);
+  const networkMessageIdsRef = useRef<Set<string>>(new Set());
   
   // Get all messages from the network log
   const allMessages = network.messageLog;
@@ -42,6 +44,7 @@ const NetworkMessages: React.FC<NetworkMessagesProps> = ({
       setVisibleMessages([]);
       lastMessageCountRef.current = 0;
       processingRef.current = false;
+      networkMessageIdsRef.current.clear();
       cancelSpeech();
       
       if (messageTimerRef.current) {
@@ -55,26 +58,27 @@ const NetworkMessages: React.FC<NetworkMessagesProps> = ({
       }
       return;
     }
+
+    // Check for new messages in the network log
+    const newMessages = network.messageLog.filter(msg => !networkMessageIdsRef.current.has(msg.id));
     
-    // If we're not running or there are no new messages, don't update
-    if (!isRunning && visibleMessages.length === network.messageLog.length) {
-      return;
-    }
-    
-    // If we have new messages and we're running or visible messages is empty, update
-    if (network.messageLog.length > visibleMessages.length || visibleMessages.length === 0) {
-      // When simulation first starts, show the first message immediately
-      if (visibleMessages.length === 0 && network.messageLog.length > 0) {
-        setVisibleMessages([network.messageLog[0]]);
+    if (newMessages.length > 0) {
+      console.log(`Found ${newMessages.length} new messages to process`);
+      
+      // If no messages are currently visible or processing, display the first message immediately
+      if (visibleMessages.length === 0 && !processingRef.current) {
+        const firstMessage = newMessages[0];
+        setVisibleMessages([firstMessage]);
+        networkMessageIdsRef.current.add(firstMessage.id);
         lastMessageCountRef.current = 1;
         
-        // If we're running, start processing the next messages
-        if (isRunning && network.messageLog.length > 1 && !processingRef.current) {
+        // If there are more new messages and we're running, schedule processing
+        if (newMessages.length > 1 && isRunning) {
           processNextMessage();
         }
       } 
-      // Otherwise update if there are new messages while not processing
-      else if (!processingRef.current && network.messageLog.length > lastMessageCountRef.current) {
+      // If we're not currently processing messages, start processing now
+      else if (!processingRef.current && isRunning) {
         processNextMessage();
       }
     }
@@ -100,71 +104,77 @@ const NetworkMessages: React.FC<NetworkMessagesProps> = ({
   const processNextMessage = () => {
     if (processingRef.current || !isRunning) return;
 
-    const messages = activeTab === "all" ? allMessages : recentMessages;
-    const nextMessageIndex = lastMessageCountRef.current;
+    // Find unprocessed messages
+    const unprocessedMessages = network.messageLog.filter(msg => !networkMessageIdsRef.current.has(msg.id));
     
-    if (nextMessageIndex < messages.length) {
-      processingRef.current = true;
-      
-      // Notify parent that we're processing a message
-      if (onProcessingMessage) {
-        onProcessingMessage(true);
+    if (unprocessedMessages.length === 0) {
+      console.log("No unprocessed messages to display");
+      return;
+    }
+    
+    const nextMessage = unprocessedMessages[0];
+    console.log(`Processing message: ${nextMessage.id} from agent ${nextMessage.senderId}`);
+    
+    processingRef.current = true;
+    
+    // Notify parent that we're processing a message
+    if (onProcessingMessage) {
+      onProcessingMessage(true);
+    }
+    
+    // Add next message to visible messages
+    setVisibleMessages(prev => {
+      // Check if message already exists to avoid duplicates
+      if (!prev.some(m => m.id === nextMessage.id)) {
+        return [...prev, nextMessage];
       }
+      return prev;
+    });
+    
+    // Mark this message as processed
+    networkMessageIdsRef.current.add(nextMessage.id);
+    lastMessageCountRef.current = network.messageLog.findIndex(m => m.id === nextMessage.id) + 1;
+    
+    // Get agent gender information from network nodes
+    const agent = network.nodes.find(a => a.id === nextMessage.senderId);
+    const gender = agent?.gender || 'male';
+    
+    // Check if ElevenLabs API key is set
+    if (!getApiKey()) {
+      console.log("No ElevenLabs API key, skipping speech");
+      processingRef.current = false;
       
-      const nextMessage = messages[nextMessageIndex];
-      
-      // Add next message to visible messages
-      setVisibleMessages(prev => {
-        // Check if message already exists to avoid duplicates
-        if (!prev.some(m => m.id === nextMessage.id)) {
-          return [...prev, nextMessage];
+      // Schedule next message immediately without speech
+      messageTimerRef.current = setTimeout(() => {
+        if (onProcessingMessage) {
+          onProcessingMessage(false);
         }
-        return prev;
-      });
+        processNextMessage();
+      }, 1000); // Short delay between messages
       
-      lastMessageCountRef.current = nextMessageIndex + 1;
-      
-      // Get agent gender information from network nodes
-      const agent = network.nodes.find(a => a.id === nextMessage.senderId);
-      const gender = agent?.gender || 'male';
-      
-      // Check if ElevenLabs API key is set
-      if (!getApiKey()) {
-        console.log("No ElevenLabs API key, skipping speech");
+      return;
+    }
+    
+    // Queue speech for this message
+    queueSpeech(
+      nextMessage.content, 
+      gender, 
+      () => setSpeakingMessageId(nextMessage.id),
+      () => {
+        setSpeakingMessageId(null);
         processingRef.current = false;
         
-        // Schedule next message immediately without speech
-        messageTimerRef.current = setTimeout(() => {
-          if (onProcessingMessage) {
-            onProcessingMessage(false);
-          }
-          processNextMessage();
-        }, 1000); // Short delay between messages
-        
-        return;
-      }
-      
-      // Queue speech for this message
-      queueSpeech(
-        nextMessage.content, 
-        gender, 
-        () => setSpeakingMessageId(nextMessage.id),
-        () => {
-          setSpeakingMessageId(null);
-          processingRef.current = false;
-          
-          // Notify parent that we're done processing this message
-          if (onProcessingMessage) {
-            onProcessingMessage(false);
-          }
-          
-          // Schedule next message after speech is complete
-          messageTimerRef.current = setTimeout(() => {
-            processNextMessage();
-          }, 500); // Small delay between messages
+        // Notify parent that we're done processing this message
+        if (onProcessingMessage) {
+          onProcessingMessage(false);
         }
-      );
-    }
+        
+        // Schedule next message after speech is complete
+        messageTimerRef.current = setTimeout(() => {
+          processNextMessage();
+        }, 500); // Small delay between messages
+      }
+    );
   };
   
   // When switching tabs, reset the message display
@@ -191,10 +201,14 @@ const NetworkMessages: React.FC<NetworkMessagesProps> = ({
   
   // Force update of visible messages when simulation starts running
   useEffect(() => {
-    if (isRunning && !processingRef.current && network.messageLog.length > lastMessageCountRef.current) {
-      processNextMessage();
+    if (isRunning && !processingRef.current && network.messageLog.length > 0) {
+      // Check if there are unprocessed messages
+      const unprocessedMessages = network.messageLog.filter(msg => !networkMessageIdsRef.current.has(msg.id));
+      if (unprocessedMessages.length > 0) {
+        processNextMessage();
+      }
     }
-  }, [isRunning, network.messageLog.length]);
+  }, [isRunning, network.messageLog]);
   
   return (
     <div className="space-y-4">
