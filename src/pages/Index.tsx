@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useCallback } from "react";
 import { toast } from "sonner";
 import SimulationHeader from "@/components/SimulationHeader";
@@ -18,76 +19,16 @@ import {
   generateBeliefHistoryData,
   generateExportData,
   initializeAgents,
-  runBeliefPropagationStep,
   getRandomTopic,
 } from "@/lib/simulation";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { MessageCircle, Settings } from "lucide-react";
 import { initializeTTS, cancelSpeech, getApiKey } from "@/lib/elevenLabsSpeech";
+import { handleStep, handleRunContinuous, handlePause, handleReset } from "@/components/SimulationStep";
 
 // Simulation step interval in milliseconds (adjusted to 10 seconds to allow time for message processing)
 const STEP_INTERVAL = 10000;
-
-// Message templates for more diverse conversation patterns
-const MESSAGE_TEMPLATES = {
-  OPINION: [
-    "I strongly believe that {topic} is important because...",
-    "In my opinion, {topic} has changed significantly over the years.",
-    "I think {topic} is overrated. Here's why...",
-    "My take on {topic} is quite different from most people.",
-    "From my perspective, {topic} is actually beneficial when you consider..."
-  ],
-  QUESTION: [
-    "What do you all think about {topic}? I'm curious.",
-    "Has anyone here had personal experience with {topic}?",
-    "I'm wondering, does {topic} really make a difference in practice?",
-    "Could someone explain why {topic} is so controversial these days?",
-    "What would happen if we all embraced {topic} completely?"
-  ],
-  AGREEMENT: [
-    "I completely agree with what @{lastSpeaker} said about {topic}!",
-    "That's exactly right @{lastSpeaker}, {topic} is definitely worth considering.",
-    "Yes! @{lastSpeaker} makes a good point about {topic}.",
-    "@{lastSpeaker} - 100% this. {topic} deserves more attention.",
-    "Couldn't have said it better myself, @{lastSpeaker}!"
-  ],
-  DISAGREEMENT: [
-    "I respectfully disagree with @{lastSpeaker}. {topic} isn't that simple.",
-    "Actually @{lastSpeaker}, I see {topic} quite differently because...",
-    "I'm not convinced that's true about {topic}, @{lastSpeaker}.",
-    "That's an interesting perspective @{lastSpeaker}, but I think {topic} is more nuanced.",
-    "I see where you're coming from @{lastSpeaker}, but have you considered this about {topic}..."
-  ],
-  JOKE: [
-    "Why did {topic} cross the road? Because it was running from all these hot takes! 😂",
-    "They say {topic} is serious business, but I'm just here for the memes 🤣",
-    "Plot twist: {topic} was the real social media influencer all along! 😆",
-    "My relationship with {topic} is complicated... like my coffee order at Starbucks! ☕️",
-    "*Dramatic voice* In a world dominated by {topic}, one person dared to scroll past... 🎬"
-  ],
-  STORY: [
-    "True story: last year I had a fascinating experience with {topic} that changed my view completely...",
-    "This reminds me of when I first encountered {topic} in college. It was eye-opening!",
-    "My friend actually works with {topic} and the stories they tell are incredible.",
-    "I once read a book about {topic} that completely changed my perspective.",
-    "Growing up, my family always emphasized {topic}. Now I understand why."
-  ],
-  OFFTOPIC: [
-    "Slightly off-topic, but has anyone seen that new show everyone's talking about?",
-    "Speaking of {topic}, did you all hear about that viral news story yesterday?",
-    "This conversation is great! Anyone else enjoying these discussions as much as I am?",
-    "Random thought: {topic} makes me think about how much society has changed.",
-    "Sorry to interrupt the {topic} talk, but I just had the best food delivery arrive! 🍕"
-  ]
-};
-
-// Diverse reactions and emojis to make messages more human-like
-const REACTIONS = [
-  "❤️", "👍", "👏", "🙌", "💯", "🔥", "😂", "🤔", "🙄", "😮", "🤦‍♀️", 
-  "exactly!", "this.", "100%", "facts", "debatable", "interesting", 
-  "wait what?", "mind blown", "I can't even", "same"
-];
 
 const Index = () => {
   // Simulation state
@@ -191,260 +132,41 @@ const Index = () => {
     }
   }, [initializeSimulation]);
 
-  // Enhanced step function with more diverse messaging
-  const handleStep = useCallback(() => {
-    if (config.currentStep >= config.steps) {
-      toast.info("Simulation complete");
-      setIsRunning(false);
-      if (runInterval) {
-        clearInterval(runInterval);
-        setRunInterval(null);
-      }
-      return;
-    }
-
-    // Only continue if not processing a message
-    if (isProcessingMessage) {
-      console.log("Skipping step while processing message");
-      return;
-    }
-
-    try {
-      console.log(`Running belief propagation step ${config.currentStep + 1} of ${config.steps}`);
-      
-      // Generate more diverse and human-like messages
-      const enhanceNetworkMessages = (network: Network): Network => {
-        // Get recent message patterns to create variety
-        const recentMessages = network.messageLog.slice(-10);
-        const hasQuestions = recentMessages.some(m => m.content.includes('?'));
-        const hasOpinions = recentMessages.some(m => m.content.includes('I think') || m.content.includes('opinion'));
-        const hasJokes = recentMessages.some(m => m.content.includes('😂') || m.content.includes('🤣'));
-        
-        // Get most recent speakers
-        const recentSpeakerIds = recentMessages.slice(-3).map(m => m.senderId);
-        
-        // Create a new updated message log with enhanced messages
-        const enhancedMessageLog = [...network.messageLog];
-        
-        // Enhance any new messages that came from the belief propagation
-        const newMessages = network.messageLog.filter(
-          msg => !enhancedMessageLog.some(existingMsg => existingMsg.id === msg.id)
-        );
-        
-        newMessages.forEach(msg => {
-          // 60% chance to enhance the message with more personality
-          if (Math.random() < 0.6) {
-            // Get the agent
-            const agent = network.nodes.find(a => a.id === msg.senderId);
-            if (!agent) return;
-            
-            // Extract the agent's name from the message
-            let agentName = "";
-            const colonIndex = msg.content.indexOf(':');
-            if (colonIndex > 0) {
-              agentName = msg.content.substring(0, colonIndex).trim();
-            }
-            
-            // Select message type based on agent traits and conversation context
-            let messageType = "OPINION"; // default
-            
-            if (agent.traits.openness > 0.7) {
-              // Creative agents are more likely to tell jokes or stories
-              messageType = Math.random() < 0.5 ? "JOKE" : "STORY";
-            } else if (agent.traits.agreeableness < 0.3) {
-              // Disagreeable agents tend to disagree with others
-              messageType = "DISAGREEMENT";
-            } else if (agent.traits.agreeableness > 0.7 && recentSpeakerIds.length > 0) {
-              // Agreeable agents tend to agree with others
-              messageType = "AGREEMENT";
-            } else if (agent.traits.extraversion > 0.7) {
-              // Extraverted agents ask questions to engage others
-              messageType = Math.random() < 0.7 ? "QUESTION" : "OPINION";
-            } else if (agent.traits.neuroticism > 0.7) {
-              // Neurotic agents may go off-topic occasionally
-              messageType = Math.random() < 0.3 ? "OFFTOPIC" : "OPINION";
-            } else {
-              // Balance messaging types based on recent conversation
-              if (hasQuestions && !hasOpinions) {
-                messageType = "OPINION";
-              } else if (!hasQuestions && hasOpinions) {
-                messageType = "QUESTION";
-              } else if (!hasJokes && Math.random() < 0.3) {
-                messageType = "JOKE";
-              } else if (recentSpeakerIds.length > 0 && Math.random() < 0.4) {
-                messageType = Math.random() < 0.5 ? "AGREEMENT" : "DISAGREEMENT";
-              } else if (Math.random() < 0.2) {
-                messageType = "STORY";
-              } else if (Math.random() < 0.1) {
-                messageType = "OFFTOPIC";
-              }
-            }
-            
-            // Get templates for the selected message type
-            const templates = MESSAGE_TEMPLATES[messageType as keyof typeof MESSAGE_TEMPLATES];
-            const template = templates[Math.floor(Math.random() * templates.length)];
-            
-            // Get a last speaker to reference (if applicable)
-            let lastSpeaker = "";
-            if (["AGREEMENT", "DISAGREEMENT"].includes(messageType) && recentSpeakerIds.length > 0) {
-              // Find a different agent to reference
-              const otherAgentIds = recentSpeakerIds.filter(id => id !== agent.id);
-              if (otherAgentIds.length > 0) {
-                const lastSpeakerId = otherAgentIds[0];
-                const speakerAgent = network.nodes.find(a => a.id === lastSpeakerId);
-                if (speakerAgent) {
-                  // Extract name from previous message
-                  const previousMessage = enhancedMessageLog.findLast(m => m.senderId === lastSpeakerId);
-                  if (previousMessage) {
-                    const colonIndex = previousMessage.content.indexOf(':');
-                    if (colonIndex > 0) {
-                      lastSpeaker = previousMessage.content.substring(0, colonIndex).trim();
-                    }
-                  }
-                  
-                  // If name extraction failed, use default format
-                  if (!lastSpeaker) {
-                    lastSpeaker = `Agent${lastSpeakerId}`;
-                  }
-                }
-              }
-            }
-            
-            // Sometimes add reactions/emoji to make it more conversational
-            const addReaction = Math.random() < 0.3;
-            const reaction = addReaction ? ` ${REACTIONS[Math.floor(Math.random() * REACTIONS.length)]}` : '';
-            
-            // Generate the new message content
-            let content = template
-              .replace("{topic}", network.currentTopic)
-              .replace("{lastSpeaker}", lastSpeaker);
-              
-            // Add personality-specific traits to messages
-            if (agent.traits.conscientiousness > 0.8) {
-              // Conscientious agents are more formal and detailed
-              content += " I've given this careful consideration.";
-            } else if (agent.traits.extraversion > 0.8) {
-              // Extraverts are more enthusiastic
-              content += " I'm really passionate about this!";
-            } else if (agent.traits.neuroticism > 0.8) {
-              // Neurotic agents are more hesitant
-              content += " But I could be wrong...";
-            }
-            
-            // Final message with name prefix and optional reaction
-            const enhancedContent = `${agentName}: ${content}${reaction}`;
-            
-            // Update the message content
-            const msgIndex = enhancedMessageLog.findIndex(m => m.id === msg.id);
-            if (msgIndex >= 0) {
-              enhancedMessageLog[msgIndex] = {
-                ...msg,
-                content: enhancedContent
-              };
-            }
-          }
-        });
-        
-        return {
-          ...network,
-          messageLog: enhancedMessageLog
-        };
-      };
-      
-      // Run one step of belief propagation
-      const updatedNetwork = runBeliefPropagationStep(network);
-      
-      // Enhance messages with more diversity
-      const enhancedNetwork = enhanceNetworkMessages(updatedNetwork);
-      
-      // Log message counts for debugging
-      console.log(`Messages before step: ${network.messageLog.length}`);
-      console.log(`Messages after step: ${enhancedNetwork.messageLog.length}`);
-      console.log(`New messages: ${enhancedNetwork.messageLog.length - network.messageLog.length}`);
-      
-      // Ensure message IDs are preserved
-      const newMessages = enhancedNetwork.messageLog.filter(
-        newMsg => !network.messageLog.some(oldMsg => oldMsg.id === newMsg.id)
-      );
-      console.log(`Filtered new messages: ${newMessages.length}`);
-      
-      // For debugging, log content of first new message if available
-      if (newMessages.length > 0) {
-        console.log(`First new message: Agent #${newMessages[0].senderId} says "${newMessages[0].content}"`);
-      }
-      
-      setNetwork(prev => ({
-        ...enhancedNetwork,
-        // Ensure we don't lose any messages if there's a race condition
-        messageLog: [...prev.messageLog, ...newMessages]
-      }));
-      
-      setConfig((prev) => ({
-        ...prev,
-        currentStep: prev.currentStep + 1,
-      }));
-
-      // Update stats
-      const stats = calculateStatistics(enhancedNetwork);
-      setStatistics(stats);
-
-      // Update history data
-      const history = generateBeliefHistoryData(enhancedNetwork);
-      setHistoryData(history);
-
-      // If selected agent exists, update the selection to reflect new data
-      if (selectedAgentId !== null) {
-        const updatedAgent = enhancedNetwork.nodes.find(
-          (agent) => agent.id === selectedAgentId
-        );
-        if (updatedAgent) {
-          setSelectedAgentId(updatedAgent.id);
-        }
-      }
-    } catch (error) {
-      console.error("Step error:", error);
-      toast.error("Error during simulation step");
-      setIsRunning(false);
-      if (runInterval) {
-        clearInterval(runInterval);
-        setRunInterval(null);
-      }
-    }
+  // Simulation step handler
+  const handleSimulationStep = useCallback(() => {
+    handleStep({
+      network,
+      config,
+      runInterval,
+      selectedAgentId,
+      isProcessingMessage,
+      setNetwork,
+      setConfig,
+      setStatistics,
+      setHistoryData,
+      setIsRunning,
+      setRunInterval
+    });
   }, [config, network, runInterval, selectedAgentId, isProcessingMessage]);
 
-  // Handle running the simulation continuously
-  const handleRunContinuous = useCallback(() => {
-    setIsRunning(true);
-    // Start with one step immediately
-    handleStep();
-    
-    const interval = window.setInterval(() => {
-      handleStep();
-    }, STEP_INTERVAL);
-    setRunInterval(interval);
-  }, [handleStep]);
+  // Continuous run handler
+  const handleSimulationContinuous = useCallback(() => {
+    handleRunContinuous(
+      STEP_INTERVAL,
+      handleSimulationStep,
+      setIsRunning,
+      setRunInterval
+    );
+  }, [handleSimulationStep]);
 
-  // Handle pausing the simulation
-  const handlePause = useCallback(() => {
-    setIsRunning(false);
-    if (runInterval) {
-      clearInterval(runInterval);
-      setRunInterval(null);
-    }
-    toast.info("Simulation paused");
+  // Pause handler
+  const handleSimulationPause = useCallback(() => {
+    handlePause(runInterval, setIsRunning, setRunInterval);
   }, [runInterval]);
 
-  // Handle resetting the simulation
-  const handleReset = useCallback(() => {
-    setIsRunning(false);
-    if (runInterval) {
-      clearInterval(runInterval);
-      setRunInterval(null);
-    }
-    // Cancel any ongoing speech
-    cancelSpeech();
-    initializeSimulation();
-    toast.success("Simulation reset with a new discussion topic");
+  // Reset handler
+  const handleSimulationReset = useCallback(() => {
+    handleReset(runInterval, initializeSimulation, setIsRunning, setRunInterval);
   }, [initializeSimulation, runInterval]);
 
   // Handle updating simulation configuration
@@ -516,10 +238,10 @@ const Index = () => {
           <SimulationControls
             config={config}
             onUpdateConfig={handleUpdateConfig}
-            onReset={handleReset}
-            onStep={handleStep}
-            onRunContinuous={handleRunContinuous}
-            onPause={handlePause}
+            onReset={handleSimulationReset}
+            onStep={handleSimulationStep}
+            onRunContinuous={handleSimulationContinuous}
+            onPause={handleSimulationPause}
             onExport={handleExport}
             isRunning={isRunning}
             isComplete={isComplete}
