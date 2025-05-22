@@ -136,8 +136,8 @@ const Index = () => {
   }, [initializeSimulation]);
 
   // Simulation step handler
-  const handleSimulationStep = useCallback(() => {
-    handleStep({
+  const handleSimulationStep = useCallback(async () => {
+    await handleStep({
       network,
       config,
       runInterval,
@@ -168,8 +168,8 @@ const Index = () => {
   }, [runInterval]);
 
   // Reset handler
-  const handleSimulationReset = useCallback(() => {
-    handleReset(runInterval, initializeSimulation, setIsRunning, setRunInterval);
+  const handleSimulationReset = useCallback(async () => {
+    await handleReset(runInterval, initializeSimulation, setIsRunning, setRunInterval);
   }, [initializeSimulation, runInterval]);
 
   // Handle updating simulation configuration

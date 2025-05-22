@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 import { 
   setGeminiApiKey, 
   getGeminiApiKey, 
@@ -24,12 +25,14 @@ const GeminiSettings = () => {
   const [apiKey, setApiKey] = useState<string>("");
   const [isEnabled, setIsEnabled] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [apiKeyValid, setApiKeyValid] = useState<boolean>(false);
   
   useEffect(() => {
     // Load saved API key and enabled state on component mount
     const savedApiKey = getGeminiApiKey();
     if (savedApiKey) {
       setApiKey(savedApiKey);
+      setApiKeyValid(true);
     }
     
     setIsEnabled(getGeminiEnabled());
@@ -38,7 +41,14 @@ const GeminiSettings = () => {
   
   const handleSaveApiKey = () => {
     if (apiKey && apiKey.trim() !== "") {
-      setGeminiApiKey(apiKey.trim());
+      const trimmedKey = apiKey.trim();
+      setGeminiApiKey(trimmedKey);
+      setApiKeyValid(true);
+      // If key is valid, auto-enable Gemini
+      if (!isEnabled) {
+        setIsEnabled(true);
+        setGeminiEnabled(true);
+      }
     }
   };
   
@@ -65,7 +75,12 @@ const GeminiSettings = () => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Gemini API Settings</CardTitle>
+        <CardTitle className="flex items-center gap-2">
+          Gemini API Settings
+          {isEnabled && apiKeyValid && (
+            <Badge variant="success" className="bg-green-500">Active</Badge>
+          )}
+        </CardTitle>
         <CardDescription>
           Configure Gemini AI to generate more diverse agent conversations
         </CardDescription>
@@ -96,7 +111,7 @@ const GeminiSettings = () => {
             id="use-gemini"
             checked={isEnabled}
             onCheckedChange={handleToggleEnabled}
-            disabled={!apiKey}
+            disabled={!apiKeyValid}
           />
         </div>
       </CardContent>

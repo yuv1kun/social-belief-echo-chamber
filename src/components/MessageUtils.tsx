@@ -15,6 +15,12 @@ export const findLastMessageFromSender = (messages: Message[], senderId: number)
 
 // Enhanced step function with more diverse messaging
 export const enhanceNetworkMessages = async (network: Network): Promise<Network> => {
+  // Check if Gemini API is available and properly configured
+  const isGeminiEnabled = getGeminiEnabled();
+  const geminiApiKey = getGeminiApiKey();
+  
+  console.log(`Enhancing messages - Gemini enabled: ${isGeminiEnabled}, API key present: ${!!geminiApiKey}`);
+  
   // Get recent message patterns to create variety
   const recentMessages = network.messageLog.slice(-10);
   const hasQuestions = recentMessages.some(m => m.content.includes('?'));
@@ -30,13 +36,12 @@ export const enhanceNetworkMessages = async (network: Network): Promise<Network>
   // Create a new updated message log with enhanced messages
   const enhancedMessageLog = [...network.messageLog];
   
-  // Check if Gemini API is available
-  const isGeminiEnabled = getGeminiEnabled() && !!getGeminiApiKey();
-  
   // Enhance any new messages that came from the belief propagation
   const newMessages = network.messageLog.filter(
     msg => !enhancedMessageLog.some(existingMsg => existingMsg.id === msg.id)
   );
+  
+  console.log(`Found ${newMessages.length} new messages to enhance`);
   
   // Process each new message
   for (const msg of newMessages) {
@@ -162,8 +167,10 @@ export const enhanceNetworkMessages = async (network: Network): Promise<Network>
       let content = "";
       let enhancedContent = "";
       
-      if (isGeminiEnabled) {
+      if (isGeminiEnabled && geminiApiKey) {
         try {
+          console.log(`Using Gemini for agent #${agent.id}, message type: ${messageType}`);
+          
           // Use Gemini API to generate message
           const generatedMessage = await generateMessage(
             agent, 
@@ -175,6 +182,7 @@ export const enhanceNetworkMessages = async (network: Network): Promise<Network>
           
           if (generatedMessage) {
             content = generatedMessage;
+            console.log(`Gemini generated message: "${content}"`);
             
             // Add reactions/emoji to make it more conversational
             const addReaction = Math.random() < 0.35;
@@ -183,6 +191,7 @@ export const enhanceNetworkMessages = async (network: Network): Promise<Network>
             // Final message with name prefix and optional reaction
             enhancedContent = `${agentName}: ${content}${reaction}`;
           } else {
+            console.log(`Gemini failed to generate message, falling back to template`);
             // Fallback to template if Gemini fails
             const fallbackContent = getTemplateContent(messageType, network.currentTopic, lastSpeaker);
             content = fallbackContent;
@@ -196,6 +205,7 @@ export const enhanceNetworkMessages = async (network: Network): Promise<Network>
           enhancedContent = `${agentName}: ${content}`;
         }
       } else {
+        console.log(`Using template for agent #${agent.id}, message type: ${messageType}`);
         // Use templates for message generation (original behavior)
         content = getTemplateContent(messageType, network.currentTopic, lastSpeaker);
         

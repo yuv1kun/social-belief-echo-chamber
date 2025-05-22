@@ -3,7 +3,7 @@ import { Network, Agent, SimulationConfig, runBeliefPropagationStep, calculateSt
 import { enhanceNetworkMessages } from "./MessageUtils";
 import { toast } from "sonner";
 import { cancelSpeech } from "@/lib/elevenLabsSpeech";
-import { initializeGemini } from "@/lib/geminiApi";
+import { initializeGemini, getGeminiEnabled, getGeminiApiKey } from "@/lib/geminiApi";
 
 export interface StepHandlerProps {
   network: Network;
@@ -34,7 +34,7 @@ export const handleStep = async ({
   setHistoryData,
   setIsRunning,
   setRunInterval
-}: StepHandlerProps) => {
+}: StepHandlerProps): Promise<void> => {
   if (config.currentStep >= config.steps) {
     toast.info("Simulation complete");
     setIsRunning(false);
@@ -56,6 +56,10 @@ export const handleStep = async ({
     
     // Run one step of belief propagation
     const updatedNetwork = runBeliefPropagationStep(network);
+    
+    // Check if Gemini is enabled and has API key
+    const isGeminiActive = getGeminiEnabled() && !!getGeminiApiKey();
+    console.log(`Gemini is ${isGeminiActive ? 'enabled' : 'disabled'}, API Key present: ${!!getGeminiApiKey()}`);
     
     // Enhance messages with more diversity - make sure this runs
     // Note that enhanceNetworkMessages is now async
@@ -138,12 +142,12 @@ export const handlePause = (
 };
 
 // Handle resetting the simulation
-export const handleReset = (
+export const handleReset = async (
   runInterval: number | null, 
   initializeSimulation: () => void,
   setIsRunning: React.Dispatch<React.SetStateAction<boolean>>,
   setRunInterval: React.Dispatch<React.SetStateAction<number | null>>
-) => {
+): Promise<void> => {
   setIsRunning(false);
   if (runInterval) {
     clearInterval(runInterval);
