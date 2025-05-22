@@ -1,6 +1,7 @@
 
 import { Network, Message } from "@/lib/simulation";
 import { MESSAGE_TEMPLATES, REACTIONS, PERSONA_PHRASES } from "./MessageTemplates";
+import { generateMessage, getGeminiEnabled, getGeminiApiKey } from "@/lib/geminiApi";
 
 // Function to find the most recent message from a specific sender
 export const findLastMessageFromSender = (messages: Message[], senderId: number): Message | undefined => {
@@ -13,7 +14,7 @@ export const findLastMessageFromSender = (messages: Message[], senderId: number)
 };
 
 // Enhanced step function with more diverse messaging
-export const enhanceNetworkMessages = (network: Network): Network => {
+export const enhanceNetworkMessages = async (network: Network): Promise<Network> => {
   // Get recent message patterns to create variety
   const recentMessages = network.messageLog.slice(-10);
   const hasQuestions = recentMessages.some(m => m.content.includes('?'));
@@ -29,17 +30,21 @@ export const enhanceNetworkMessages = (network: Network): Network => {
   // Create a new updated message log with enhanced messages
   const enhancedMessageLog = [...network.messageLog];
   
+  // Check if Gemini API is available
+  const isGeminiEnabled = getGeminiEnabled() && !!getGeminiApiKey();
+  
   // Enhance any new messages that came from the belief propagation
   const newMessages = network.messageLog.filter(
     msg => !enhancedMessageLog.some(existingMsg => existingMsg.id === msg.id)
   );
   
-  newMessages.forEach(msg => {
-    // 85% chance to enhance the message with more personality (increased from 60%)
+  // Process each new message
+  for (const msg of newMessages) {
+    // 85% chance to enhance the message with more personality
     if (Math.random() < 0.85) {
       // Get the agent
       const agent = network.nodes.find(a => a.id === msg.senderId);
-      if (!agent) return;
+      if (!agent) continue;
       
       // Extract the agent's name from the message
       let agentName = "";
@@ -63,7 +68,7 @@ export const enhanceNetworkMessages = (network: Network): Network => {
           messageType = Math.random() < 0.5 ? "OPINION" : "STORY";
         }
       } else if (agent.traits.agreeableness < 0.3) {
-        // Disagreeable agents tend to disagree with others, especially if there are recent messages to respond to
+        // Disagreeable agents tend to disagree with others
         if (recentSpeakerIds.length > 0 && recentSpeakerIds[0] !== agent.id && Math.random() < 0.7) {
           messageType = "DISAGREEMENT";
         } else {
@@ -127,20 +132,6 @@ export const enhanceNetworkMessages = (network: Network): Network => {
         }
       }
       
-      // Get templates for the selected message type
-      let templates;
-      let template;
-      
-      // For persona-specific phrases
-      if (["INTELLECTUAL", "CASUAL", "ENTHUSIASTIC", "SKEPTICAL", "SUPPORTIVE"].includes(messageType)) {
-        templates = PERSONA_PHRASES[messageType as keyof typeof PERSONA_PHRASES];
-        template = templates[Math.floor(Math.random() * templates.length)];
-      } else {
-        // Normal message templates
-        templates = MESSAGE_TEMPLATES[messageType as keyof typeof MESSAGE_TEMPLATES];
-        template = templates[Math.floor(Math.random() * templates.length)];
-      }
-      
       // Get a last speaker to reference (if applicable)
       let lastSpeaker = "";
       if (["AGREEMENT", "DISAGREEMENT"].includes(messageType) && recentSpeakerIds.length > 0) {
@@ -167,48 +158,84 @@ export const enhanceNetworkMessages = (network: Network): Network => {
         }
       }
       
-      // Add reactions/emoji to make it more conversational
-      // Increased chance of adding reactions
-      const addReaction = Math.random() < 0.45; // Increased from 0.3
-      const reaction = addReaction ? ` ${REACTIONS[Math.floor(Math.random() * REACTIONS.length)]}` : '';
+      // Generate content based on whether Gemini is enabled or not
+      let content = "";
+      let enhancedContent = "";
       
-      // Generate the new message content
-      let content = template
-        .replace("{topic}", network.currentTopic)
-        .replace("{lastSpeaker}", lastSpeaker);
-        
-      // Add personality-specific traits to messages
-      if (agent.traits.conscientiousness > 0.8) {
-        // Conscientious agents are more formal and detailed
-        content += " I've given this careful consideration.";
-      } else if (agent.traits.extraversion > 0.8) {
-        // Extraverts are more enthusiastic
-        content += " I'm really passionate about this!";
-      } else if (agent.traits.neuroticism > 0.8) {
-        // Neurotic agents are more hesitant
-        content += " But I could be wrong...";
-      }
-      
-      // Add variability with occasional sentence starters
-      if (Math.random() < 0.3) {
-        const starters = [
-          "Just thinking out loud, but ", 
-          "Not sure if everyone agrees, but ",
-          "Call me crazy, but ",
-          "Been reflecting on this and ",
-          "Wild thought: ",
-          "Hear me out on this: ",
-          "Unpopular opinion maybe, but ",
-          "Consider this: "
-        ];
-        const starter = starters[Math.floor(Math.random() * starters.length)];
-        if (!content.includes(starter)) {
-          content = starter + content.charAt(0).toLowerCase() + content.slice(1);
+      if (isGeminiEnabled) {
+        try {
+          // Use Gemini API to generate message
+          const generatedMessage = await generateMessage(
+            agent, 
+            network, 
+            messageType, 
+            recentMessages,
+            lastSpeaker
+          );
+          
+          if (generatedMessage) {
+            content = generatedMessage;
+            
+            // Add reactions/emoji to make it more conversational
+            const addReaction = Math.random() < 0.35;
+            const reaction = addReaction ? ` ${REACTIONS[Math.floor(Math.random() * REACTIONS.length)]}` : '';
+            
+            // Final message with name prefix and optional reaction
+            enhancedContent = `${agentName}: ${content}${reaction}`;
+          } else {
+            // Fallback to template if Gemini fails
+            const fallbackContent = getTemplateContent(messageType, network.currentTopic, lastSpeaker);
+            content = fallbackContent;
+            enhancedContent = `${agentName}: ${content}`;
+          }
+        } catch (error) {
+          console.error("Error generating message with Gemini:", error);
+          // Fallback to template
+          const fallbackContent = getTemplateContent(messageType, network.currentTopic, lastSpeaker);
+          content = fallbackContent;
+          enhancedContent = `${agentName}: ${content}`;
         }
+      } else {
+        // Use templates for message generation (original behavior)
+        content = getTemplateContent(messageType, network.currentTopic, lastSpeaker);
+        
+        // Add personality-specific traits to messages
+        if (agent.traits.conscientiousness > 0.8) {
+          // Conscientious agents are more formal and detailed
+          content += " I've given this careful consideration.";
+        } else if (agent.traits.extraversion > 0.8) {
+          // Extraverts are more enthusiastic
+          content += " I'm really passionate about this!";
+        } else if (agent.traits.neuroticism > 0.8) {
+          // Neurotic agents are more hesitant
+          content += " But I could be wrong...";
+        }
+        
+        // Add variability with occasional sentence starters
+        if (Math.random() < 0.3) {
+          const starters = [
+            "Just thinking out loud, but ", 
+            "Not sure if everyone agrees, but ",
+            "Call me crazy, but ",
+            "Been reflecting on this and ",
+            "Wild thought: ",
+            "Hear me out on this: ",
+            "Unpopular opinion maybe, but ",
+            "Consider this: "
+          ];
+          const starter = starters[Math.floor(Math.random() * starters.length)];
+          if (!content.includes(starter)) {
+            content = starter + content.charAt(0).toLowerCase() + content.slice(1);
+          }
+        }
+        
+        // Add reactions/emoji to make it more conversational
+        const addReaction = Math.random() < 0.45;
+        const reaction = addReaction ? ` ${REACTIONS[Math.floor(Math.random() * REACTIONS.length)]}` : '';
+        
+        // Final message with name prefix and optional reaction
+        enhancedContent = `${agentName}: ${content}${reaction}`;
       }
-      
-      // Final message with name prefix and optional reaction
-      const enhancedContent = `${agentName}: ${content}${reaction}`;
       
       // Update the message content
       const msgIndex = enhancedMessageLog.findIndex(m => m.id === msg.id);
@@ -219,10 +246,32 @@ export const enhanceNetworkMessages = (network: Network): Network => {
         };
       }
     }
-  });
+  }
   
   return {
     ...network,
     messageLog: enhancedMessageLog
   };
 };
+
+// Helper function to get content from templates
+function getTemplateContent(messageType: string, topic: string, lastSpeaker: string = ""): string {
+  // Get templates for the selected message type
+  let templates;
+  let template;
+  
+  // For persona-specific phrases
+  if (["INTELLECTUAL", "CASUAL", "ENTHUSIASTIC", "SKEPTICAL", "SUPPORTIVE"].includes(messageType)) {
+    templates = PERSONA_PHRASES[messageType as keyof typeof PERSONA_PHRASES];
+    template = templates[Math.floor(Math.random() * templates.length)];
+  } else {
+    // Normal message templates
+    templates = MESSAGE_TEMPLATES[messageType as keyof typeof MESSAGE_TEMPLATES];
+    template = templates[Math.floor(Math.random() * templates.length)];
+  }
+  
+  // Generate the content
+  return template
+    .replace("{topic}", topic)
+    .replace("{lastSpeaker}", lastSpeaker);
+}

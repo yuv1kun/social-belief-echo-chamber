@@ -3,6 +3,7 @@ import { Network, Agent, SimulationConfig, runBeliefPropagationStep, calculateSt
 import { enhanceNetworkMessages } from "./MessageUtils";
 import { toast } from "sonner";
 import { cancelSpeech } from "@/lib/elevenLabsSpeech";
+import { initializeGemini } from "@/lib/geminiApi";
 
 export interface StepHandlerProps {
   network: Network;
@@ -18,7 +19,10 @@ export interface StepHandlerProps {
   setRunInterval: React.Dispatch<React.SetStateAction<number | null>>;
 }
 
-export const handleStep = ({
+// Initialize Gemini when the module loads
+initializeGemini();
+
+export const handleStep = async ({
   network,
   config,
   runInterval,
@@ -54,7 +58,8 @@ export const handleStep = ({
     const updatedNetwork = runBeliefPropagationStep(network);
     
     // Enhance messages with more diversity - make sure this runs
-    const enhancedNetwork = enhanceNetworkMessages(updatedNetwork);
+    // Note that enhanceNetworkMessages is now async
+    const enhancedNetwork = await enhanceNetworkMessages(updatedNetwork);
     
     // Log message counts for debugging
     console.log(`Messages before step: ${network.messageLog.length}`);
@@ -104,7 +109,7 @@ export const handleStep = ({
 // Handle running the simulation continuously
 export const handleRunContinuous = (
   stepInterval: number,
-  handleStep: () => void,
+  handleStep: () => Promise<void>,
   setIsRunning: React.Dispatch<React.SetStateAction<boolean>>,
   setRunInterval: React.Dispatch<React.SetStateAction<number | null>>
 ) => {

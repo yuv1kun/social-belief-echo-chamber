@@ -9,6 +9,7 @@ import SimulationStats from "@/components/SimulationStats";
 import NetworkMessages from "@/components/NetworkMessages";
 import AgentSelector from "@/components/AgentSelector";
 import ElevenLabsSettings from "@/components/ElevenLabsSettings";
+import GeminiSettings from "@/components/GeminiSettings";
 import {
   Agent,
   Network,
@@ -26,6 +27,7 @@ import { Button } from "@/components/ui/button";
 import { MessageCircle, Settings } from "lucide-react";
 import { initializeTTS, cancelSpeech, getApiKey } from "@/lib/elevenLabsSpeech";
 import { handleStep, handleRunContinuous, handlePause, handleReset } from "@/components/SimulationStep";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // Simulation step interval in milliseconds (adjusted to 10 seconds to allow time for message processing)
 const STEP_INTERVAL = 10000;
@@ -54,6 +56,7 @@ const Index = () => {
   const [historyData, setHistoryData] = useState<any[]>([]);
   const [showSettings, setShowSettings] = useState(false);
   const [isProcessingMessage, setIsProcessingMessage] = useState(false); // Track message processing
+  const [settingsTab, setSettingsTab] = useState<string>("voice"); // Default tab
   const [statistics, setStatistics] = useState({
     totalAgents: 0,
     believers: 0,
@@ -255,12 +258,23 @@ const Index = () => {
             onClick={() => setShowSettings(!showSettings)}
           >
             <Settings className="h-4 w-4" />
-            {showSettings ? 'Hide Voice Settings' : 'Show Voice Settings'}
+            {showSettings ? 'Hide Settings' : 'Show Settings'}
           </Button>
           
-          {/* ElevenLabs Settings */}
+          {/* Settings Tabs */}
           {showSettings && (
-            <ElevenLabsSettings />
+            <Tabs defaultValue={settingsTab} onValueChange={setSettingsTab}>
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="voice">Voice</TabsTrigger>
+                <TabsTrigger value="gemini">Gemini</TabsTrigger>
+              </TabsList>
+              <TabsContent value="voice" className="mt-4">
+                <ElevenLabsSettings />
+              </TabsContent>
+              <TabsContent value="gemini" className="mt-4">
+                <GeminiSettings />
+              </TabsContent>
+            </Tabs>
           )}
           
           {/* Agent Selector component */}
