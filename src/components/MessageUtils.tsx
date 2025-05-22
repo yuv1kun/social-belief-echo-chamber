@@ -1,6 +1,6 @@
 
 import { Network, Message } from "@/lib/simulation";
-import { MESSAGE_TEMPLATES, REACTIONS } from "./MessageTemplates";
+import { MESSAGE_TEMPLATES, REACTIONS, PERSONA_PHRASES } from "./MessageTemplates";
 
 // Function to find the most recent message from a specific sender
 export const findLastMessageFromSender = (messages: Message[], senderId: number): Message | undefined => {
@@ -19,9 +19,12 @@ export const enhanceNetworkMessages = (network: Network): Network => {
   const hasQuestions = recentMessages.some(m => m.content.includes('?'));
   const hasOpinions = recentMessages.some(m => m.content.includes('I think') || m.content.includes('opinion'));
   const hasJokes = recentMessages.some(m => m.content.includes('😂') || m.content.includes('🤣'));
+  const hasStories = recentMessages.some(m => m.content.includes('story') || m.content.includes('happened'));
+  const hasAgreements = recentMessages.some(m => m.content.toLowerCase().includes('agree'));
+  const hasDisagreements = recentMessages.some(m => m.content.toLowerCase().includes('disagree'));
   
   // Get most recent speakers
-  const recentSpeakerIds = recentMessages.slice(-3).map(m => m.senderId);
+  const recentSpeakerIds = recentMessages.map(m => m.senderId).slice(-3);
   
   // Create a new updated message log with enhanced messages
   const enhancedMessageLog = [...network.messageLog];
@@ -32,8 +35,8 @@ export const enhanceNetworkMessages = (network: Network): Network => {
   );
   
   newMessages.forEach(msg => {
-    // 60% chance to enhance the message with more personality
-    if (Math.random() < 0.6) {
+    // 85% chance to enhance the message with more personality (increased from 60%)
+    if (Math.random() < 0.85) {
       // Get the agent
       const agent = network.nodes.find(a => a.id === msg.senderId);
       if (!agent) return;
@@ -45,44 +48,98 @@ export const enhanceNetworkMessages = (network: Network): Network => {
         agentName = msg.content.substring(0, colonIndex).trim();
       }
       
-      // Select message type based on agent traits and conversation context
+      // Personality-based message selection
+      // Select message type based on agent traits, conversation context, and randomness
       let messageType = "OPINION"; // default
       
+      // Determine message type based on agent personality and conversation context
       if (agent.traits.openness > 0.7) {
         // Creative agents are more likely to tell jokes or stories
-        messageType = Math.random() < 0.5 ? "JOKE" : "STORY";
+        if (hasJokes && !hasStories && Math.random() < 0.7) {
+          messageType = "STORY";
+        } else if (!hasJokes && Math.random() < 0.5) {
+          messageType = "JOKE";
+        } else {
+          messageType = Math.random() < 0.5 ? "OPINION" : "STORY";
+        }
       } else if (agent.traits.agreeableness < 0.3) {
-        // Disagreeable agents tend to disagree with others
-        messageType = "DISAGREEMENT";
+        // Disagreeable agents tend to disagree with others, especially if there are recent messages to respond to
+        if (recentSpeakerIds.length > 0 && recentSpeakerIds[0] !== agent.id && Math.random() < 0.7) {
+          messageType = "DISAGREEMENT";
+        } else {
+          messageType = Math.random() < 0.6 ? "OPINION" : "QUESTION";
+        }
       } else if (agent.traits.agreeableness > 0.7 && recentSpeakerIds.length > 0) {
         // Agreeable agents tend to agree with others
-        messageType = "AGREEMENT";
+        if (recentSpeakerIds[0] !== agent.id && Math.random() < 0.8) {
+          messageType = "AGREEMENT";
+        } else {
+          messageType = Math.random() < 0.6 ? "SUPPORTIVE" : "QUESTION";
+        }
       } else if (agent.traits.extraversion > 0.7) {
-        // Extraverted agents ask questions to engage others
-        messageType = Math.random() < 0.7 ? "QUESTION" : "OPINION";
-      } else if (agent.traits.neuroticism > 0.7) {
-        // Neurotic agents may go off-topic occasionally
-        messageType = Math.random() < 0.3 ? "OFFTOPIC" : "OPINION";
-      } else {
-        // Balance messaging types based on recent conversation
-        if (hasQuestions && !hasOpinions) {
-          messageType = "OPINION";
-        } else if (!hasQuestions && hasOpinions) {
-          messageType = "QUESTION";
-        } else if (!hasJokes && Math.random() < 0.3) {
+        // Extraverted agents ask questions to engage others, tell jokes, or stories
+        const randomVal = Math.random();
+        if (randomVal < 0.4) {
+          messageType = "QUESTION"; 
+        } else if (randomVal < 0.6) {
           messageType = "JOKE";
-        } else if (recentSpeakerIds.length > 0 && Math.random() < 0.4) {
-          messageType = Math.random() < 0.5 ? "AGREEMENT" : "DISAGREEMENT";
-        } else if (Math.random() < 0.2) {
+        } else if (randomVal < 0.8) {
           messageType = "STORY";
-        } else if (Math.random() < 0.1) {
+        } else {
+          messageType = "OPINION";
+        }
+      } else if (agent.traits.neuroticism > 0.7) {
+        // Neurotic agents may go off-topic occasionally or question things
+        if (Math.random() < 0.4) {
+          messageType = "OFFTOPIC";
+        } else if (Math.random() < 0.6) {
+          messageType = "QUESTION";
+        } else {
+          messageType = "SKEPTICAL";
+        }
+      } else {
+        // Balance messaging types based on recent conversation to create diversity
+        const ratios = {
+          questions: hasQuestions ? 0.1 : 0.3,
+          opinions: hasOpinions ? 0.1 : 0.3,
+          jokes: hasJokes ? 0.1 : 0.2,
+          stories: hasStories ? 0.1 : 0.2,
+          agreements: hasAgreements ? 0.1 : 0.25,
+          disagreements: hasDisagreements ? 0.1 : 0.25,
+          offtopic: 0.1
+        };
+        
+        const rand = Math.random();
+        if (rand < ratios.questions) {
+          messageType = "QUESTION";
+        } else if (rand < ratios.questions + ratios.opinions) {
+          messageType = "OPINION";
+        } else if (rand < ratios.questions + ratios.opinions + ratios.jokes) {
+          messageType = "JOKE";
+        } else if (rand < ratios.questions + ratios.opinions + ratios.jokes + ratios.stories) {
+          messageType = "STORY";
+        } else if (rand < ratios.questions + ratios.opinions + ratios.jokes + ratios.stories + ratios.agreements && recentSpeakerIds.length > 0) {
+          messageType = "AGREEMENT";
+        } else if (rand < ratios.questions + ratios.opinions + ratios.jokes + ratios.stories + ratios.agreements + ratios.disagreements && recentSpeakerIds.length > 0) {
+          messageType = "DISAGREEMENT";
+        } else {
           messageType = "OFFTOPIC";
         }
       }
       
       // Get templates for the selected message type
-      const templates = MESSAGE_TEMPLATES[messageType as keyof typeof MESSAGE_TEMPLATES];
-      const template = templates[Math.floor(Math.random() * templates.length)];
+      let templates;
+      let template;
+      
+      // For persona-specific phrases
+      if (["INTELLECTUAL", "CASUAL", "ENTHUSIASTIC", "SKEPTICAL", "SUPPORTIVE"].includes(messageType)) {
+        templates = PERSONA_PHRASES[messageType as keyof typeof PERSONA_PHRASES];
+        template = templates[Math.floor(Math.random() * templates.length)];
+      } else {
+        // Normal message templates
+        templates = MESSAGE_TEMPLATES[messageType as keyof typeof MESSAGE_TEMPLATES];
+        template = templates[Math.floor(Math.random() * templates.length)];
+      }
       
       // Get a last speaker to reference (if applicable)
       let lastSpeaker = "";
@@ -110,8 +167,9 @@ export const enhanceNetworkMessages = (network: Network): Network => {
         }
       }
       
-      // Sometimes add reactions/emoji to make it more conversational
-      const addReaction = Math.random() < 0.3;
+      // Add reactions/emoji to make it more conversational
+      // Increased chance of adding reactions
+      const addReaction = Math.random() < 0.45; // Increased from 0.3
       const reaction = addReaction ? ` ${REACTIONS[Math.floor(Math.random() * REACTIONS.length)]}` : '';
       
       // Generate the new message content
@@ -129,6 +187,24 @@ export const enhanceNetworkMessages = (network: Network): Network => {
       } else if (agent.traits.neuroticism > 0.8) {
         // Neurotic agents are more hesitant
         content += " But I could be wrong...";
+      }
+      
+      // Add variability with occasional sentence starters
+      if (Math.random() < 0.3) {
+        const starters = [
+          "Just thinking out loud, but ", 
+          "Not sure if everyone agrees, but ",
+          "Call me crazy, but ",
+          "Been reflecting on this and ",
+          "Wild thought: ",
+          "Hear me out on this: ",
+          "Unpopular opinion maybe, but ",
+          "Consider this: "
+        ];
+        const starter = starters[Math.floor(Math.random() * starters.length)];
+        if (!content.includes(starter)) {
+          content = starter + content.charAt(0).toLowerCase() + content.slice(1);
+        }
       }
       
       // Final message with name prefix and optional reaction

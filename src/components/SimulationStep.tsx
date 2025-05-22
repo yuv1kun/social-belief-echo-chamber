@@ -53,7 +53,7 @@ export const handleStep = ({
     // Run one step of belief propagation
     const updatedNetwork = runBeliefPropagationStep(network);
     
-    // Enhance messages with more diversity
+    // Enhance messages with more diversity - make sure this runs
     const enhancedNetwork = enhanceNetworkMessages(updatedNetwork);
     
     // Log message counts for debugging
