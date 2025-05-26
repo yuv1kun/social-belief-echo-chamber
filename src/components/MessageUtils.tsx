@@ -1,4 +1,3 @@
-
 import { Network, Message } from "@/lib/simulation";
 import { MESSAGE_TEMPLATES, REACTIONS, PERSONA_PHRASES } from "./MessageTemplates";
 import { generateMessage, getGeminiEnabled, getGeminiApiKey } from "@/lib/geminiApi";
@@ -36,17 +35,23 @@ export const enhanceNetworkMessages = async (network: Network): Promise<Network>
   // Create a new updated message log with enhanced messages
   const enhancedMessageLog = [...network.messageLog];
   
-  // Enhance any new messages that came from the belief propagation
-  const newMessages = network.messageLog.filter(
-    msg => !enhancedMessageLog.some(existingMsg => existingMsg.id === msg.id)
-  );
+  // Find messages that need enhancement (newly created messages)
+  const messagesToEnhance = network.messageLog.filter(msg => {
+    // Check if this message looks like a basic template message that needs enhancement
+    const content = msg.content;
+    const hasBasicTemplate = content.includes("This has been on my mind recently") || 
+                            content.includes("Let's discuss something interesting") ||
+                            content.includes("What do you think about") ||
+                            content.includes("I have an opinion on");
+    return hasBasicTemplate;
+  });
   
-  console.log(`Found ${newMessages.length} new messages to enhance`);
+  console.log(`Found ${messagesToEnhance.length} messages to enhance with Gemini`);
   
-  // Process each new message
-  for (const msg of newMessages) {
-    // 85% chance to enhance the message with more personality
-    if (Math.random() < 0.85) {
+  // Process each message that needs enhancement
+  for (const msg of messagesToEnhance) {
+    // 95% chance to enhance the message with Gemini if available
+    if (Math.random() < 0.95) {
       // Get the agent
       const agent = network.nodes.find(a => a.id === msg.senderId);
       if (!agent) continue;
@@ -56,10 +61,11 @@ export const enhanceNetworkMessages = async (network: Network): Promise<Network>
       const colonIndex = msg.content.indexOf(':');
       if (colonIndex > 0) {
         agentName = msg.content.substring(0, colonIndex).trim();
+      } else {
+        agentName = `Agent${agent.id}`;
       }
       
       // Personality-based message selection
-      // Select message type based on agent traits, conversation context, and randomness
       let messageType = "OPINION"; // default
       
       // Determine message type based on agent personality and conversation context
@@ -254,6 +260,7 @@ export const enhanceNetworkMessages = async (network: Network): Promise<Network>
           ...msg,
           content: enhancedContent
         };
+        console.log(`Enhanced message for agent #${agent.id}: "${enhancedContent}"`);
       }
     }
   }
