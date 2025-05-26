@@ -61,12 +61,12 @@ export const enhanceNetworkMessages = async (network: Network): Promise<Network>
   
   // Process each message that needs enhancement
   for (const msg of messagesToEnhance) {
+    // Get the agent first
+    const agent = network.nodes.find(a => a.id === msg.senderId);
+    if (!agent) continue;
+    
     // Always enhance the message with Gemini if available
     if (isGeminiEnabled && geminiApiKey) {
-      // Get the agent
-      const agent = network.nodes.find(a => a.id === msg.senderId);
-      if (!agent) continue;
-      
       // Extract the agent's name from the message
       let agentName = "";
       const colonIndex = msg.content.indexOf(':');
@@ -85,8 +85,8 @@ export const enhanceNetworkMessages = async (network: Network): Promise<Network>
         const isLastMessageFromSameAgent = lastMessage.senderId === agent.id;
         
         if (!isLastMessageFromSameAgent) {
-          // Different agent - higher chance to respond/react to previous message
-          if (Math.random() < 0.7) {
+          // Different agent - much higher chance to respond/react to previous message (90%)
+          if (Math.random() < 0.9) {
             // Choose response type based on agent personality
             if (agent.traits.agreeableness > 0.6) {
               messageType = Math.random() < 0.6 ? "AGREEMENT" : "SUPPORTIVE";
@@ -103,13 +103,13 @@ export const enhanceNetworkMessages = async (network: Network): Promise<Network>
       }
       
       // Adjust based on personality for initial messages
-      if (recentMessages.length === 0 || Math.random() < 0.3) {
+      if (recentMessages.length === 0 || Math.random() < 0.2) { // Reduced from 0.3 to 0.2
         if (agent.traits.openness > 0.7) {
           messageType = Math.random() < 0.5 ? "STORY" : "OPINION";
         } else if (agent.traits.extraversion > 0.7) {
-          messageType = Math.random() < 0.4 ? "QUESTION" : "JOKE";
+          messageType = Math.random() < 0.3 ? "QUESTION" : "JOKE"; // Reduced question chance
         } else if (agent.traits.neuroticism > 0.7) {
-          messageType = Math.random() < 0.3 ? "OFFTOPIC" : "SKEPTICAL";
+          messageType = Math.random() < 0.2 ? "OFFTOPIC" : "SKEPTICAL"; // Reduced offtopic chance
         }
       }
       
@@ -178,9 +178,6 @@ export const enhanceNetworkMessages = async (network: Network): Promise<Network>
     } else {
       // Fallback to template enhancement if Gemini is not available
       console.log(`Using template for agent #${agent.id}`);
-      
-      const agent = network.nodes.find(a => a.id === msg.senderId);
-      if (!agent) continue;
       
       let agentName = "";
       const colonIndex = msg.content.indexOf(':');
