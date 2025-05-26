@@ -36,15 +36,16 @@ export function getGeminiApiKey(): string | null {
   // Always check localStorage for the most recent value
   const storedApiKey = localStorage.getItem(GEMINI_API_KEY_STORAGE_KEY);
   if (storedApiKey) {
-    geminiApiKey = storedApiKey;
+    geminiApiKey = storedApiKey.trim(); // Ensure no whitespace
   }
   return geminiApiKey;
 }
 
 // Set API key
 export function setGeminiApiKey(apiKey: string): void {
-  geminiApiKey = apiKey;
-  localStorage.setItem(GEMINI_API_KEY_STORAGE_KEY, apiKey);
+  const trimmedKey = apiKey.trim(); // Remove any whitespace
+  geminiApiKey = trimmedKey;
+  localStorage.setItem(GEMINI_API_KEY_STORAGE_KEY, trimmedKey);
   console.log("Gemini API key saved to storage");
   toast.success("Gemini API key saved");
 }
@@ -90,6 +91,45 @@ function describeAgentPersonality(agent: Agent): string {
 
 // Cache for storing AI-generated messages to minimize API calls
 const messageCache = new Map<string, string>();
+
+// Test API key validity
+export async function testGeminiApiKey(apiKey: string): Promise<boolean> {
+  try {
+    const trimmedKey = apiKey.trim();
+    console.log(`Testing Gemini API key: ${trimmedKey.substring(0, 10)}...`);
+    
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${trimmedKey}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        contents: [{
+          parts: [{
+            text: "Hello"
+          }]
+        }],
+        generationConfig: {
+          maxOutputTokens: 10
+        }
+      })
+    });
+    
+    console.log(`API key test response status: ${response.status}`);
+    
+    if (response.ok) {
+      console.log("API key is valid");
+      return true;
+    } else {
+      const errorText = await response.text();
+      console.error("API key test failed:", response.status, errorText);
+      return false;
+    }
+  } catch (error) {
+    console.error("Error testing API key:", error);
+    return false;
+  }
+}
 
 // Generate a conversation message using the Gemini API
 export async function generateMessage(
@@ -172,11 +212,11 @@ export async function generateMessage(
   try {
     console.log(`Making Gemini API request with key: ${currentApiKey.substring(0, 10)}...`);
     
-    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent", {
+    // Use query parameter instead of header for API key
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${currentApiKey}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-goog-api-key": currentApiKey
       },
       body: JSON.stringify({
         contents: [{
