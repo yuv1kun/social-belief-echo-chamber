@@ -1,3 +1,4 @@
+
 import { Network, Message } from "@/lib/simulation";
 import { MESSAGE_TEMPLATES, REACTIONS, PERSONA_PHRASES } from "./MessageTemplates";
 import { generateMessage, getGeminiEnabled, getGeminiApiKey } from "@/lib/geminiApi";
@@ -35,23 +36,33 @@ export const enhanceNetworkMessages = async (network: Network): Promise<Network>
   // Create a new updated message log with enhanced messages
   const enhancedMessageLog = [...network.messageLog];
   
-  // Find messages that need enhancement (newly created messages)
+  // Find ALL newly created messages that need enhancement
   const messagesToEnhance = network.messageLog.filter(msg => {
-    // Check if this message looks like a basic template message that needs enhancement
+    // Enhanced logic to identify messages that need Gemini enhancement
     const content = msg.content;
-    const hasBasicTemplate = content.includes("This has been on my mind recently") || 
-                            content.includes("Let's discuss something interesting") ||
-                            content.includes("What do you think about") ||
-                            content.includes("I have an opinion on");
-    return hasBasicTemplate;
+    
+    // Check if message is a basic template or needs enhancement
+    const needsEnhancement = 
+      content.includes("This has been on my mind recently") || 
+      content.includes("Let's discuss something interesting") ||
+      content.includes("What do you think about") ||
+      content.includes("I have an opinion on") ||
+      content.includes("What does everyone think about") ||
+      content.includes("Curious what you all think") ||
+      // Also enhance messages that look very basic or repetitive
+      content.split(' ').length < 8 || // Very short messages
+      content.includes("READ THIS NOW!") || // Template-like content
+      content.includes("*sends link*"); // Template-like content
+    
+    return needsEnhancement;
   });
   
   console.log(`Found ${messagesToEnhance.length} messages to enhance with Gemini`);
   
   // Process each message that needs enhancement
   for (const msg of messagesToEnhance) {
-    // 95% chance to enhance the message with Gemini if available
-    if (Math.random() < 0.95) {
+    // Always enhance the message with Gemini if available
+    if (isGeminiEnabled && geminiApiKey) {
       // Get the agent
       const agent = network.nodes.find(a => a.id === msg.senderId);
       if (!agent) continue;
@@ -65,94 +76,52 @@ export const enhanceNetworkMessages = async (network: Network): Promise<Network>
         agentName = `Agent${agent.id}`;
       }
       
-      // Personality-based message selection
+      // Determine message type based on conversation flow and agent personality
       let messageType = "OPINION"; // default
       
-      // Determine message type based on agent personality and conversation context
-      if (agent.traits.openness > 0.7) {
-        // Creative agents are more likely to tell jokes or stories
-        if (hasJokes && !hasStories && Math.random() < 0.7) {
-          messageType = "STORY";
-        } else if (!hasJokes && Math.random() < 0.5) {
-          messageType = "JOKE";
-        } else {
-          messageType = Math.random() < 0.5 ? "OPINION" : "STORY";
-        }
-      } else if (agent.traits.agreeableness < 0.3) {
-        // Disagreeable agents tend to disagree with others
-        if (recentSpeakerIds.length > 0 && recentSpeakerIds[0] !== agent.id && Math.random() < 0.7) {
-          messageType = "DISAGREEMENT";
-        } else {
-          messageType = Math.random() < 0.6 ? "OPINION" : "QUESTION";
-        }
-      } else if (agent.traits.agreeableness > 0.7 && recentSpeakerIds.length > 0) {
-        // Agreeable agents tend to agree with others
-        if (recentSpeakerIds[0] !== agent.id && Math.random() < 0.8) {
-          messageType = "AGREEMENT";
-        } else {
-          messageType = Math.random() < 0.6 ? "SUPPORTIVE" : "QUESTION";
-        }
-      } else if (agent.traits.extraversion > 0.7) {
-        // Extraverted agents ask questions to engage others, tell jokes, or stories
-        const randomVal = Math.random();
-        if (randomVal < 0.4) {
-          messageType = "QUESTION"; 
-        } else if (randomVal < 0.6) {
-          messageType = "JOKE";
-        } else if (randomVal < 0.8) {
-          messageType = "STORY";
-        } else {
-          messageType = "OPINION";
-        }
-      } else if (agent.traits.neuroticism > 0.7) {
-        // Neurotic agents may go off-topic occasionally or question things
-        if (Math.random() < 0.4) {
-          messageType = "OFFTOPIC";
-        } else if (Math.random() < 0.6) {
-          messageType = "QUESTION";
-        } else {
-          messageType = "SKEPTICAL";
-        }
-      } else {
-        // Balance messaging types based on recent conversation to create diversity
-        const ratios = {
-          questions: hasQuestions ? 0.1 : 0.3,
-          opinions: hasOpinions ? 0.1 : 0.3,
-          jokes: hasJokes ? 0.1 : 0.2,
-          stories: hasStories ? 0.1 : 0.2,
-          agreements: hasAgreements ? 0.1 : 0.25,
-          disagreements: hasDisagreements ? 0.1 : 0.25,
-          offtopic: 0.1
-        };
+      // If there are recent messages, agents should respond more often than ask new questions
+      if (recentMessages.length > 0) {
+        const lastMessage = recentMessages[recentMessages.length - 1];
+        const isLastMessageFromSameAgent = lastMessage.senderId === agent.id;
         
-        const rand = Math.random();
-        if (rand < ratios.questions) {
-          messageType = "QUESTION";
-        } else if (rand < ratios.questions + ratios.opinions) {
-          messageType = "OPINION";
-        } else if (rand < ratios.questions + ratios.opinions + ratios.jokes) {
-          messageType = "JOKE";
-        } else if (rand < ratios.questions + ratios.opinions + ratios.jokes + ratios.stories) {
-          messageType = "STORY";
-        } else if (rand < ratios.questions + ratios.opinions + ratios.jokes + ratios.stories + ratios.agreements && recentSpeakerIds.length > 0) {
-          messageType = "AGREEMENT";
-        } else if (rand < ratios.questions + ratios.opinions + ratios.jokes + ratios.stories + ratios.agreements + ratios.disagreements && recentSpeakerIds.length > 0) {
-          messageType = "DISAGREEMENT";
-        } else {
-          messageType = "OFFTOPIC";
+        if (!isLastMessageFromSameAgent) {
+          // Different agent - higher chance to respond/react to previous message
+          if (Math.random() < 0.7) {
+            // Choose response type based on agent personality
+            if (agent.traits.agreeableness > 0.6) {
+              messageType = Math.random() < 0.6 ? "AGREEMENT" : "SUPPORTIVE";
+            } else if (agent.traits.agreeableness < 0.4) {
+              messageType = Math.random() < 0.5 ? "DISAGREEMENT" : "SKEPTICAL";
+            } else {
+              messageType = Math.random() < 0.4 ? "OPINION" : "STORY";
+            }
+          } else {
+            // Occasionally ask follow-up questions
+            messageType = "QUESTION";
+          }
+        }
+      }
+      
+      // Adjust based on personality for initial messages
+      if (recentMessages.length === 0 || Math.random() < 0.3) {
+        if (agent.traits.openness > 0.7) {
+          messageType = Math.random() < 0.5 ? "STORY" : "OPINION";
+        } else if (agent.traits.extraversion > 0.7) {
+          messageType = Math.random() < 0.4 ? "QUESTION" : "JOKE";
+        } else if (agent.traits.neuroticism > 0.7) {
+          messageType = Math.random() < 0.3 ? "OFFTOPIC" : "SKEPTICAL";
         }
       }
       
       // Get a last speaker to reference (if applicable)
       let lastSpeaker = "";
-      if (["AGREEMENT", "DISAGREEMENT"].includes(messageType) && recentSpeakerIds.length > 0) {
+      if (["AGREEMENT", "DISAGREEMENT", "SUPPORTIVE"].includes(messageType) && recentSpeakerIds.length > 0) {
         // Find a different agent to reference
         const otherAgentIds = recentSpeakerIds.filter(id => id !== agent.id);
         if (otherAgentIds.length > 0) {
           const lastSpeakerId = otherAgentIds[0];
           const speakerAgent = network.nodes.find(a => a.id === lastSpeakerId);
           if (speakerAgent) {
-            // Find previous message using loop instead of findLast
             const previousMessage = findLastMessageFromSender(network.messageLog, lastSpeakerId);
             if (previousMessage) {
               const colonIndex = previousMessage.content.indexOf(':');
@@ -161,7 +130,6 @@ export const enhanceNetworkMessages = async (network: Network): Promise<Network>
               }
             }
             
-            // If name extraction failed, use default format
             if (!lastSpeaker) {
               lastSpeaker = `Agent${lastSpeakerId}`;
             }
@@ -169,98 +137,75 @@ export const enhanceNetworkMessages = async (network: Network): Promise<Network>
         }
       }
       
-      // Generate content based on whether Gemini is enabled or not
-      let content = "";
-      let enhancedContent = "";
+      try {
+        console.log(`Using Gemini for agent #${agent.id}, message type: ${messageType}`);
+        
+        // Use Gemini API to generate message
+        const generatedMessage = await generateMessage(
+          agent, 
+          network, 
+          messageType, 
+          recentMessages,
+          lastSpeaker
+        );
+        
+        if (generatedMessage) {
+          const content = generatedMessage;
+          console.log(`Gemini generated message: "${content}"`);
+          
+          // Add reactions/emoji to make it more conversational
+          const addReaction = Math.random() < 0.35;
+          const reaction = addReaction ? ` ${REACTIONS[Math.floor(Math.random() * REACTIONS.length)]}` : '';
+          
+          // Final message with name prefix and optional reaction
+          const enhancedContent = `${agentName}: ${content}${reaction}`;
+          
+          // Update the message content
+          const msgIndex = enhancedMessageLog.findIndex(m => m.id === msg.id);
+          if (msgIndex >= 0) {
+            enhancedMessageLog[msgIndex] = {
+              ...msg,
+              content: enhancedContent
+            };
+            console.log(`Enhanced message for agent #${agent.id}: "${enhancedContent}"`);
+          }
+        } else {
+          console.log(`Gemini failed to generate message, keeping original`);
+        }
+      } catch (error) {
+        console.error("Error generating message with Gemini:", error);
+      }
+    } else {
+      // Fallback to template enhancement if Gemini is not available
+      console.log(`Using template for agent #${agent.id}`);
       
-      if (isGeminiEnabled && geminiApiKey) {
-        try {
-          console.log(`Using Gemini for agent #${agent.id}, message type: ${messageType}`);
-          
-          // Use Gemini API to generate message
-          const generatedMessage = await generateMessage(
-            agent, 
-            network, 
-            messageType, 
-            recentMessages,
-            lastSpeaker
-          );
-          
-          if (generatedMessage) {
-            content = generatedMessage;
-            console.log(`Gemini generated message: "${content}"`);
-            
-            // Add reactions/emoji to make it more conversational
-            const addReaction = Math.random() < 0.35;
-            const reaction = addReaction ? ` ${REACTIONS[Math.floor(Math.random() * REACTIONS.length)]}` : '';
-            
-            // Final message with name prefix and optional reaction
-            enhancedContent = `${agentName}: ${content}${reaction}`;
-          } else {
-            console.log(`Gemini failed to generate message, falling back to template`);
-            // Fallback to template if Gemini fails
-            const fallbackContent = getTemplateContent(messageType, network.currentTopic, lastSpeaker);
-            content = fallbackContent;
-            enhancedContent = `${agentName}: ${content}`;
-          }
-        } catch (error) {
-          console.error("Error generating message with Gemini:", error);
-          // Fallback to template
-          const fallbackContent = getTemplateContent(messageType, network.currentTopic, lastSpeaker);
-          content = fallbackContent;
-          enhancedContent = `${agentName}: ${content}`;
-        }
+      const agent = network.nodes.find(a => a.id === msg.senderId);
+      if (!agent) continue;
+      
+      let agentName = "";
+      const colonIndex = msg.content.indexOf(':');
+      if (colonIndex > 0) {
+        agentName = msg.content.substring(0, colonIndex).trim();
       } else {
-        console.log(`Using template for agent #${agent.id}, message type: ${messageType}`);
-        // Use templates for message generation (original behavior)
-        content = getTemplateContent(messageType, network.currentTopic, lastSpeaker);
-        
-        // Add personality-specific traits to messages
-        if (agent.traits.conscientiousness > 0.8) {
-          // Conscientious agents are more formal and detailed
-          content += " I've given this careful consideration.";
-        } else if (agent.traits.extraversion > 0.8) {
-          // Extraverts are more enthusiastic
-          content += " I'm really passionate about this!";
-        } else if (agent.traits.neuroticism > 0.8) {
-          // Neurotic agents are more hesitant
-          content += " But I could be wrong...";
-        }
-        
-        // Add variability with occasional sentence starters
-        if (Math.random() < 0.3) {
-          const starters = [
-            "Just thinking out loud, but ", 
-            "Not sure if everyone agrees, but ",
-            "Call me crazy, but ",
-            "Been reflecting on this and ",
-            "Wild thought: ",
-            "Hear me out on this: ",
-            "Unpopular opinion maybe, but ",
-            "Consider this: "
-          ];
-          const starter = starters[Math.floor(Math.random() * starters.length)];
-          if (!content.includes(starter)) {
-            content = starter + content.charAt(0).toLowerCase() + content.slice(1);
-          }
-        }
-        
-        // Add reactions/emoji to make it more conversational
-        const addReaction = Math.random() < 0.45;
-        const reaction = addReaction ? ` ${REACTIONS[Math.floor(Math.random() * REACTIONS.length)]}` : '';
-        
-        // Final message with name prefix and optional reaction
-        enhancedContent = `${agentName}: ${content}${reaction}`;
+        agentName = `Agent${agent.id}`;
       }
       
-      // Update the message content
+      // Use template-based enhancement as fallback
+      const messageType = Math.random() < 0.5 ? "OPINION" : "QUESTION";
+      const content = getTemplateContent(messageType, network.currentTopic, "");
+      
+      const addReaction = Math.random() < 0.45;
+      const reaction = addReaction ? ` ${REACTIONS[Math.floor(Math.random() * REACTIONS.length)]}` : '';
+      
+      const enhancedContent = `${agentName}: ${content}${reaction}`;
+      
       const msgIndex = enhancedMessageLog.findIndex(m => m.id === msg.id);
       if (msgIndex >= 0) {
         enhancedMessageLog[msgIndex] = {
           ...msg,
           content: enhancedContent
         };
-        console.log(`Enhanced message for agent #${agent.id}: "${enhancedContent}"`);
+        console.log(`Template enhanced message for agent #${agent.id}: "${enhancedContent}"`);
       }
     }
   }
