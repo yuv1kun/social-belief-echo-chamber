@@ -78,7 +78,7 @@ const GeminiSettings = () => {
         <CardTitle className="flex items-center gap-2">
           Gemini API Settings
           {isEnabled && apiKeyValid && (
-            <Badge variant="success" className="bg-green-500">Active</Badge>
+            <Badge variant="secondary" className="bg-green-500 text-white">Active</Badge>
           )}
         </CardTitle>
         <CardDescription>
