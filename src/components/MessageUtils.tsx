@@ -36,22 +36,34 @@ export const enhanceNetworkMessages = async (network: Network): Promise<Network>
   const enhancedMessageLog = [...network.messageLog];
   
   // Find ALL newly created messages that need enhancement
+  // Look for messages that are clearly template-based or basic
   const messagesToEnhance = network.messageLog.filter(msg => {
-    // Enhanced logic to identify messages that need Gemini enhancement
     const content = msg.content;
     
-    // Check if message is a basic template or needs enhancement
+    // Remove agent name prefix to check actual content
+    const colonIndex = content.indexOf(':');
+    const actualContent = colonIndex > 0 ? content.substring(colonIndex + 1).trim() : content;
+    
+    // Check if message needs Gemini enhancement
     const needsEnhancement = 
-      content.includes("This has been on my mind recently") || 
-      content.includes("Let's discuss something interesting") ||
-      content.includes("What do you think about") ||
-      content.includes("I have an opinion on") ||
-      content.includes("What does everyone think about") ||
-      content.includes("Curious what you all think") ||
-      // Also enhance messages that look very basic or repetitive
-      content.split(' ').length < 8 || // Very short messages
-      content.includes("READ THIS NOW!") || // Template-like content
-      content.includes("*sends link*"); // Template-like content
+      // Template phrases that indicate basic generation
+      actualContent.includes("This has been on my mind recently") || 
+      actualContent.includes("Let's discuss something interesting") ||
+      actualContent.includes("What do you think about") ||
+      actualContent.includes("I have an opinion on") ||
+      actualContent.includes("What does everyone think about") ||
+      actualContent.includes("Curious what you all think") ||
+      actualContent.includes("Been hearing a lot about") ||
+      actualContent.includes("Thoughts?") ||
+      actualContent.includes("READ THIS NOW!") ||
+      actualContent.includes("*sends link*") ||
+      // Very generic or short messages
+      actualContent.split(' ').length < 6 || // Very short messages
+      // Messages that look template-like
+      actualContent.includes("{topic}") ||
+      actualContent.includes("lately.") ||
+      // Basic conversation starters
+      (actualContent.includes("lately") && actualContent.includes("Thoughts"));
     
     return needsEnhancement;
   });
@@ -100,13 +112,13 @@ export const enhanceNetworkMessages = async (network: Network): Promise<Network>
     }
     
     // Adjust based on personality for initial messages
-    if (recentMessages.length === 0 || Math.random() < 0.2) { // Reduced from 0.3 to 0.2
+    if (recentMessages.length === 0 || Math.random() < 0.2) {
       if (agent.traits.openness > 0.7) {
         messageType = Math.random() < 0.5 ? "STORY" : "OPINION";
       } else if (agent.traits.extraversion > 0.7) {
-        messageType = Math.random() < 0.3 ? "QUESTION" : "JOKE"; // Reduced question chance
+        messageType = Math.random() < 0.3 ? "QUESTION" : "JOKE";
       } else if (agent.traits.neuroticism > 0.7) {
-        messageType = Math.random() < 0.2 ? "OFFTOPIC" : "SKEPTICAL"; // Reduced offtopic chance
+        messageType = Math.random() < 0.2 ? "OFFTOPIC" : "SKEPTICAL";
       }
     }
     
@@ -135,7 +147,7 @@ export const enhanceNetworkMessages = async (network: Network): Promise<Network>
     }
     
     try {
-      console.log(`Using Gemini for agent #${agent.id}, message type: ${messageType}`);
+      console.log(`Using Gemini for agent #${agent.id}, message type: ${messageType}, topic: ${network.currentTopic}`);
       
       // Use Gemini API to generate message
       const generatedMessage = await generateMessage(
@@ -148,7 +160,7 @@ export const enhanceNetworkMessages = async (network: Network): Promise<Network>
       
       if (generatedMessage) {
         const content = generatedMessage;
-        console.log(`Gemini generated message: "${content}"`);
+        console.log(`Gemini generated message for Agent #${agent.id}: "${content}"`);
         
         // Add reactions/emoji to make it more conversational
         const addReaction = Math.random() < 0.35;
@@ -167,20 +179,12 @@ export const enhanceNetworkMessages = async (network: Network): Promise<Network>
           console.log(`Enhanced message for agent #${agent.id}: "${enhancedContent}"`);
         }
       } else {
-        console.log(`Gemini failed to generate message for agent #${agent.id}, removing message from log`);
-        // Remove the message from the log if Gemini fails
-        const msgIndex = enhancedMessageLog.findIndex(m => m.id === msg.id);
-        if (msgIndex >= 0) {
-          enhancedMessageLog.splice(msgIndex, 1);
-        }
+        console.log(`Gemini failed to generate message for agent #${agent.id}, keeping original message`);
+        // Keep the original message if Gemini fails
       }
     } catch (error) {
       console.error("Error generating message with Gemini:", error);
-      // Remove the message from the log if there's an error
-      const msgIndex = enhancedMessageLog.findIndex(m => m.id === msg.id);
-      if (msgIndex >= 0) {
-        enhancedMessageLog.splice(msgIndex, 1);
-      }
+      // Keep the original message if there's an error
     }
   }
   
