@@ -17,6 +17,9 @@ export function initializeGemini(): void {
   const storedApiKey = localStorage.getItem(GEMINI_API_KEY_STORAGE_KEY);
   if (storedApiKey) {
     geminiApiKey = storedApiKey;
+    console.log("Gemini API key loaded from storage");
+  } else {
+    console.log("No Gemini API key found in storage");
   }
   
   // Check if Gemini is enabled
@@ -24,10 +27,17 @@ export function initializeGemini(): void {
   if (storedEnabled) {
     isGeminiEnabled = storedEnabled === 'true';
   }
+  
+  console.log(`Gemini initialized - enabled: ${isGeminiEnabled}, API key present: ${!!geminiApiKey}`);
 }
 
 // Get API key
 export function getGeminiApiKey(): string | null {
+  // Always check localStorage for the most recent value
+  const storedApiKey = localStorage.getItem(GEMINI_API_KEY_STORAGE_KEY);
+  if (storedApiKey) {
+    geminiApiKey = storedApiKey;
+  }
   return geminiApiKey;
 }
 
@@ -35,6 +45,7 @@ export function getGeminiApiKey(): string | null {
 export function setGeminiApiKey(apiKey: string): void {
   geminiApiKey = apiKey;
   localStorage.setItem(GEMINI_API_KEY_STORAGE_KEY, apiKey);
+  console.log("Gemini API key saved to storage");
   toast.success("Gemini API key saved");
 }
 
@@ -42,10 +53,16 @@ export function setGeminiApiKey(apiKey: string): void {
 export function setGeminiEnabled(enabled: boolean): void {
   isGeminiEnabled = enabled;
   localStorage.setItem(GEMINI_ENABLED_STORAGE_KEY, enabled ? 'true' : 'false');
+  console.log(`Gemini enabled state set to: ${enabled}`);
 }
 
 // Get Gemini enabled state
 export function getGeminiEnabled(): boolean {
+  // Always check localStorage for the most recent value
+  const storedEnabled = localStorage.getItem(GEMINI_ENABLED_STORAGE_KEY);
+  if (storedEnabled) {
+    isGeminiEnabled = storedEnabled === 'true';
+  }
   return isGeminiEnabled;
 }
 
@@ -82,7 +99,14 @@ export async function generateMessage(
   recentMessages: Message[],
   lastSpeaker: string = ""
 ): Promise<string | null> {
-  if (!geminiApiKey || !isGeminiEnabled) {
+  // Get the current API key and enabled state
+  const currentApiKey = getGeminiApiKey();
+  const currentEnabled = getGeminiEnabled();
+  
+  console.log(`Generating message - API key present: ${!!currentApiKey}, enabled: ${currentEnabled}`);
+  
+  if (!currentApiKey || !currentEnabled) {
+    console.log("Gemini not available for message generation");
     return null;
   }
   
@@ -97,6 +121,7 @@ export async function generateMessage(
   
   // Check cache first
   if (messageCache.has(cacheKey)) {
+    console.log("Using cached message");
     return messageCache.get(cacheKey) || null;
   }
   
@@ -145,11 +170,13 @@ export async function generateMessage(
   prompt += "\nKeep your message brief (1-3 sentences). Don't include any prefixes like 'Agent1:' - just the message content.";
   
   try {
+    console.log(`Making Gemini API request with key: ${currentApiKey.substring(0, 10)}...`);
+    
     const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-goog-api-key": geminiApiKey
+        "x-goog-api-key": currentApiKey
       },
       body: JSON.stringify({
         contents: [{
@@ -165,12 +192,23 @@ export async function generateMessage(
       })
     });
     
+    console.log(`Gemini API response status: ${response.status}`);
+    
     if (!response.ok) {
-      console.error("Gemini API error:", response.statusText);
+      const errorText = await response.text();
+      console.error("Gemini API error:", response.status, errorText);
+      
+      // If it's an authentication error, show a helpful message
+      if (response.status === 400 || response.status === 401) {
+        toast.error("Invalid Gemini API key. Please check your API key in settings.");
+      } else {
+        toast.error(`Gemini API error: ${response.statusText}`);
+      }
       return null;
     }
     
     const data = await response.json();
+    console.log("Gemini API response data:", data);
     
     if (!data.candidates || data.candidates.length === 0) {
       console.error("No response from Gemini API");
@@ -179,6 +217,7 @@ export async function generateMessage(
     
     // Extract the generated text
     const generatedText = data.candidates[0].content.parts[0].text.trim();
+    console.log(`Generated message: "${generatedText}"`);
     
     // Store in cache
     messageCache.set(cacheKey, generatedText);
@@ -186,6 +225,7 @@ export async function generateMessage(
     return generatedText;
   } catch (error) {
     console.error("Error calling Gemini API:", error);
+    toast.error("Failed to connect to Gemini API");
     return null;
   }
 }
