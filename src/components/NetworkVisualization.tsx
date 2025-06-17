@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState } from "react";
 import { Network } from "@/lib/simulation";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
@@ -104,24 +103,6 @@ const NetworkVisualization: React.FC<NetworkVisualizationProps> = ({
       energyGradient.append("stop")
         .attr("offset", "100%")
         .attr("stop-color", "#06b6d4")
-        .attr("stop-opacity", "0");
-
-      // Particle system gradient
-      const particleGradient = defs.append("linearGradient")
-        .attr("id", "particleGradient")
-        .attr("x1", "0%")
-        .attr("y1", "0%")
-        .attr("x2", "100%")
-        .attr("y2", "100%");
-      
-      particleGradient.append("stop")
-        .attr("offset", "0%")
-        .attr("stop-color", "#06b6d4")
-        .attr("stop-opacity", "1");
-      
-      particleGradient.append("stop")
-        .attr("offset", "100%")
-        .attr("stop-color", "#8B5CF6")
         .attr("stop-opacity", "0");
 
       // Create holographic background grid
@@ -332,19 +313,19 @@ const NetworkVisualization: React.FC<NetworkVisualizationProps> = ({
         });
 
         link
-          .attr("x1", (d: any) => d.source.x)
-          .attr("y1", (d: any) => d.source.y)
-          .attr("x2", (d: any) => d.target.x)
-          .attr("y2", (d: any) => d.target.y);
+          .attr("x1", (d: any) => d.source.x || 0)
+          .attr("y1", (d: any) => d.source.y || 0)
+          .attr("x2", (d: any) => d.target.x || 0)
+          .attr("y2", (d: any) => d.target.y || 0);
 
-        node.attr("transform", (d: any) => `translate(${d.x},${d.y})`);
+        node.attr("transform", (d: any) => `translate(${d.x || 0},${d.y || 0})`);
         
         // Update HUD overlays
         svg.selectAll(".hud-overlay")
           .attr("transform", (d: any, i: number) => {
             const influentialNode = influentialNodes[i];
             const nodeData = nodes.find(n => n.id === influentialNode.id);
-            return nodeData ? `translate(${nodeData.x},${nodeData.y})` : "";
+            return nodeData ? `translate(${nodeData.x || 0},${nodeData.y || 0})` : "";
           });
 
         // Update particle positions along links
@@ -414,6 +395,8 @@ const NetworkVisualization: React.FC<NetworkVisualizationProps> = ({
       
       svg.selectAll(".node-group").each(function(d: any, i: number) {
         const node = network.nodes[i];
+        if (!node) return;
+        
         const group = d3.select(this);
         
         group.select("circle:nth-child(2)")
