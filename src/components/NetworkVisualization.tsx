@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState } from "react";
 import { Network } from "@/lib/simulation";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
@@ -33,29 +32,9 @@ const NetworkVisualization: React.FC<NetworkVisualizationProps> = ({
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const simulationRef = useRef<any>(null);
-  const [animationFrame, setAnimationFrame] = useState(0);
-  const [energyField, setEnergyField] = useState<{x: number, y: number, intensity: number}[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [dimensions, setDimensions] = useState({ width: 800, height: 500 });
   
-  // Animation loop for holographic effects
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setAnimationFrame(prev => prev + 1);
-      
-      // Generate energy field points around influential agents
-      const believers = network.nodes.filter(n => n.believer);
-      const fields = believers.slice(0, 3).map((node, index) => ({
-        x: 100 + index * 250,
-        y: 100 + Math.sin(animationFrame * 0.05 + index) * 50,
-        intensity: Math.random() * 50 + 30,
-      }));
-      setEnergyField(fields);
-    }, 100);
-    
-    return () => clearInterval(interval);
-  }, [network, animationFrame]);
-
   // Handle container resize
   useEffect(() => {
     const handleResize = () => {
@@ -73,6 +52,7 @@ const NetworkVisualization: React.FC<NetworkVisualizationProps> = ({
     return () => window.removeEventListener('resize', handleResize);
   }, []);
   
+  // Main D3 visualization effect - only re-run when network or dimensions change
   useEffect(() => {
     console.log("NetworkVisualization: Starting render with network:", {
       nodes: network.nodes.length,
@@ -91,7 +71,7 @@ const NetworkVisualization: React.FC<NetworkVisualizationProps> = ({
       return;
     }
 
-    // Dynamic import of d3 to avoid SSR issues
+    // Dynamic import of d3
     import("d3").then((d3) => {
       setIsLoading(true);
       
@@ -103,7 +83,7 @@ const NetworkVisualization: React.FC<NetworkVisualizationProps> = ({
       // Clear previous visualization
       svg.selectAll("*").remove();
 
-      // Create advanced gradient definitions and filters
+      // Create gradient definitions and filters
       const defs = svg.append("defs");
       
       // Holographic glow filter
@@ -157,8 +137,7 @@ const NetworkVisualization: React.FC<NetworkVisualizationProps> = ({
           .attr("y2", height)
           .attr("stroke", "#06b6d4")
           .attr("stroke-width", 0.5)
-          .attr("stroke-opacity", 0.1)
-          .attr("stroke-dasharray", "2,4");
+          .attr("stroke-opacity", 0.1);
       }
       
       // Horizontal lines
@@ -170,23 +149,10 @@ const NetworkVisualization: React.FC<NetworkVisualizationProps> = ({
           .attr("y2", y)
           .attr("stroke", "#06b6d4")
           .attr("stroke-width", 0.5)
-          .attr("stroke-opacity", 0.1)
-          .attr("stroke-dasharray", "2,4");
+          .attr("stroke-opacity", 0.1);
       }
 
-      // Energy field effects
-      const energyGroup = svg.append("g").attr("class", "energy-fields");
-      
-      energyField.forEach((field, index) => {
-        energyGroup.append("circle")
-          .attr("cx", field.x)
-          .attr("cy", field.y)
-          .attr("r", field.intensity)
-          .attr("fill", "url(#energyGradient)")
-          .attr("opacity", 0.3 + Math.sin(animationFrame * 0.1 + index) * 0.2);
-      });
-
-      // Create the force simulation
+      // Create the force simulation data
       const nodes: ForceNode[] = network.nodes.map((agent) => ({
         id: agent.id,
         believer: agent.believer,
@@ -202,34 +168,32 @@ const NetworkVisualization: React.FC<NetworkVisualizationProps> = ({
         linkCount: links.length 
       });
 
+      // Create the force simulation
       const simulation = d3
         .forceSimulation(nodes)
         .force(
           "link",
           d3.forceLink(links).id((d: any) => d.id).distance(80)
         )
-        .force("charge", d3.forceManyBody().strength(-100))
+        .force("charge", d3.forceManyBody().strength(-200))
         .force("center", d3.forceCenter(width / 2, height / 2))
-        .force("collision", d3.forceCollide().radius(25))
-        .force("x", d3.forceX(width / 2).strength(0.1))
-        .force("y", d3.forceY(height / 2).strength(0.1));
+        .force("collision", d3.forceCollide().radius(25));
 
-      // Enhanced links with data flow animation
+      // Create links
       const link = svg
         .append("g")
         .attr("class", "links")
         .selectAll("line")
         .data(links)
         .join("line")
-        .attr("class", "link")
         .attr("stroke", "#3a3a3a")
-        .attr("stroke-opacity", 0.4)
+        .attr("stroke-opacity", 0.6)
         .attr("stroke-width", 2)
         .style("filter", "url(#holographicGlow)");
 
       console.log("NetworkVisualization: Created links:", link.size());
 
-      // Enhanced nodes with 3D-like effects
+      // Create nodes
       const nodeGroup = svg.append("g").attr("class", "nodes");
       
       const nodeSelection = nodeGroup.selectAll(".node-group")
@@ -244,7 +208,7 @@ const NetworkVisualization: React.FC<NetworkVisualizationProps> = ({
         .attr("fill", "none")
         .attr("stroke", (d: ForceNode) => d.believer ? "#8B5CF6" : "#94A3B8")
         .attr("stroke-width", 1)
-        .attr("stroke-opacity", 0.3);
+        .attr("stroke-opacity", 0.5);
       
       // Inner core
       nodeSelection.append("circle")
@@ -260,63 +224,19 @@ const NetworkVisualization: React.FC<NetworkVisualizationProps> = ({
         .attr("fill", "#ffffff")
         .attr("opacity", 0.8);
       
-      // Node label with holographic styling
+      // Node labels
       nodeSelection.append("text")
-        .attr("class", "node-label")
         .attr("text-anchor", "middle")
         .attr("dy", "-20px")
         .attr("font-size", "10px")
         .attr("fill", "#06b6d4")
         .attr("font-weight", "bold")
         .text((d: ForceNode) => d.id)
-        .style("text-shadow", "0 0 10px #06b6d4")
         .style("pointer-events", "none");
 
       console.log("NetworkVisualization: Created nodes:", nodeSelection.size());
 
-      // Add holographic HUD overlays for influential nodes
-      const influentialNodes = nodes.filter(n => {
-        const connections = links.filter(l => 
-          (typeof l.source === 'object' ? l.source.id : l.source) === n.id || 
-          (typeof l.target === 'object' ? l.target.id : l.target) === n.id
-        );
-        return connections.length > 3;
-      });
-
-      const hudGroups = svg.selectAll(".hud-overlay")
-        .data(influentialNodes)
-        .join("g")
-        .attr("class", "hud-overlay");
-
-      // Hexagonal HUD frame
-      const hexPath = "M-15,-8 L-8,-15 L8,-15 L15,-8 L15,8 L8,15 L-8,15 L-15,8 Z";
-      
-      hudGroups.append("path")
-        .attr("d", hexPath)
-        .attr("fill", "none")
-        .attr("stroke", "#06b6d4")
-        .attr("stroke-width", 1)
-        .attr("stroke-opacity", 0.6);
-      
-      // Info panel
-      hudGroups.append("rect")
-        .attr("x", 20)
-        .attr("y", -10)
-        .attr("width", 80)
-        .attr("height", 20)
-        .attr("fill", "rgba(6, 182, 212, 0.1)")
-        .attr("stroke", "#06b6d4")
-        .attr("stroke-width", 1)
-        .attr("rx", 3);
-      
-      hudGroups.append("text")
-        .attr("x", 25)
-        .attr("y", 5)
-        .attr("font-size", "8px")
-        .attr("fill", "#06b6d4")
-        .text((d: ForceNode) => `Agent ${d.id} - HIGH INFLUENCE`);
-
-      // Update positions on each tick
+      // Update positions on simulation tick
       simulation.on("tick", () => {
         // Keep nodes within bounds
         nodes.forEach(function(d) {
@@ -333,15 +253,9 @@ const NetworkVisualization: React.FC<NetworkVisualizationProps> = ({
           .attr("y2", (d: any) => d.target.y || 0);
 
         nodeSelection.attr("transform", (d: any) => `translate(${d.x || 0},${d.y || 0})`);
-        
-        // Update HUD overlays
-        hudGroups.attr("transform", (d: any) => {
-          const nodeData = nodes.find(n => n.id === d.id);
-          return nodeData ? `translate(${nodeData.x || 0},${nodeData.y || 0})` : "translate(0,0)";
-        });
       });
 
-      // Enhanced drag interaction
+      // Drag interaction
       nodeSelection.call(
         d3
           .drag()
@@ -380,28 +294,28 @@ const NetworkVisualization: React.FC<NetworkVisualizationProps> = ({
       console.error("NetworkVisualization: Error loading D3:", error);
       setIsLoading(false);
     });
-  }, [network, selectedAgentId, onSelectAgent, dimensions, energyField]);
+  }, [network, dimensions, selectedAgentId, onSelectAgent]);
 
-  // Update node colors when belief states change
+  // Update node selection colors when selectedAgentId changes
   useEffect(() => {
-    import("d3").then((d3) => {
-      if (!svgRef.current) return;
+    if (!svgRef.current) return;
 
+    import("d3").then((d3) => {
       const svg = d3.select(svgRef.current);
       
-      svg.selectAll(".node-group").each(function(d: any, i: number) {
-        const node = network.nodes[i];
-        if (!node) return;
+      svg.selectAll(".node-group").each(function(d: any) {
+        const nodeData = network.nodes.find(n => n.id === d.id);
+        if (!nodeData) return;
         
         const group = d3.select(this);
         
         group.select("circle:nth-child(2)")
-          .attr("fill", node.believer ? "#8B5CF6" : "#94A3B8")
-          .attr("stroke", node.id === selectedAgentId ? "#F97316" : "#1a1a1a")
-          .style("filter", node.id === selectedAgentId ? "url(#holographicGlow)" : "none");
+          .attr("stroke", nodeData.id === selectedAgentId ? "#F97316" : "#1a1a1a")
+          .attr("stroke-width", nodeData.id === selectedAgentId ? 3 : 1)
+          .style("filter", nodeData.id === selectedAgentId ? "url(#holographicGlow)" : "none");
       });
     });
-  }, [network.nodes, selectedAgentId]);
+  }, [selectedAgentId, network.nodes]);
 
   return (
     <Card className="overflow-hidden h-full bg-gradient-to-br from-slate-900 to-slate-800 border-cyan-500/30 shadow-lg shadow-cyan-500/20">
@@ -413,17 +327,16 @@ const NetworkVisualization: React.FC<NetworkVisualizationProps> = ({
               3D Network Visualization
             </CardTitle>
             <CardDescription className="text-gray-400">
-              {network.currentTopic && (
-                <div className="mt-2">
-                  <Badge variant="outline" className="bg-cyan-500/10 border-cyan-500/30 text-cyan-400">
-                    <Zap className="h-3 w-3 mr-1" />
-                    Topic: {network.currentTopic}
-                  </Badge>
-                </div>
-              )}
+              Interactive belief network simulation
             </CardDescription>
           </div>
           <div className="flex gap-2">
+            {network.currentTopic && (
+              <Badge variant="outline" className="bg-cyan-500/10 border-cyan-500/30 text-cyan-400">
+                <Zap className="h-3 w-3 mr-1" />
+                Topic: {network.currentTopic}
+              </Badge>
+            )}
             <Badge variant="default" className="bg-purple-600 text-white">
               <Eye className="h-3 w-3 mr-1" />
               {network.nodes.filter(n => n.believer).length} Believers
@@ -437,61 +350,27 @@ const NetworkVisualization: React.FC<NetworkVisualizationProps> = ({
       <CardContent className="p-0">
         <div 
           ref={containerRef}
-          className="w-full h-[500px] overflow-hidden relative"
+          className="w-full h-[500px] overflow-hidden relative bg-gradient-to-br from-slate-900/50 to-slate-800/50"
         >
-          <style>{`
-            @keyframes pulse {
-              0%, 100% { opacity: 0.3; transform: scale(1); }
-              50% { opacity: 0.8; transform: scale(1.1); }
-            }
-            @keyframes rotate {
-              from { transform: rotate(0deg); }
-              to { transform: rotate(360deg); }
-            }
-          `}</style>
-          
           {isLoading && (
-            <div className="absolute inset-0 flex items-center justify-center bg-slate-900/50">
+            <div className="absolute inset-0 flex items-center justify-center bg-slate-900/50 z-10">
               <div className="text-cyan-400 animate-pulse">Loading Network...</div>
             </div>
           )}
           
           {!isLoading && network.nodes.length === 0 && (
-            <div className="absolute inset-0 flex items-center justify-center bg-slate-900/50">
+            <div className="absolute inset-0 flex items-center justify-center bg-slate-900/50 z-10">
               <div className="text-gray-400">No network data available</div>
             </div>
           )}
           
           <svg
             ref={svgRef}
-            className="w-full h-full bg-gradient-to-br from-slate-900/50 to-slate-800/50"
             width={dimensions.width}
             height={dimensions.height}
+            className="w-full h-full"
+            style={{ display: 'block' }}
           />
-          
-          {/* Holographic overlay effects */}
-          <div className="absolute inset-0 pointer-events-none">
-            <div className="absolute top-4 left-4 bg-cyan-500/10 border border-cyan-500/30 rounded p-2 text-xs text-cyan-400">
-              <div className="flex items-center gap-1">
-                <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></div>
-                NEURAL NETWORK ACTIVE
-              </div>
-            </div>
-            
-            <div className="absolute top-4 right-4 bg-purple-500/10 border border-purple-500/30 rounded p-2 text-xs text-purple-400">
-              <div className="flex items-center gap-1">
-                <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse"></div>
-                INFLUENCE PROPAGATION
-              </div>
-            </div>
-            
-            <div className="absolute bottom-4 left-4 bg-green-500/10 border border-green-500/30 rounded p-2 text-xs text-green-400">
-              <div className="flex items-center gap-1">
-                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                REAL-TIME SIMULATION
-              </div>
-            </div>
-          </div>
         </div>
       </CardContent>
     </Card>
