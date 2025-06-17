@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useCallback } from "react";
 import { toast } from "sonner";
 import SimulationHeader from "@/components/SimulationHeader";
@@ -10,6 +9,10 @@ import NetworkMessages from "@/components/NetworkMessages";
 import AgentSelector from "@/components/AgentSelector";
 import ElevenLabsSettings from "@/components/ElevenLabsSettings";
 import GeminiSettings from "@/components/GeminiSettings";
+import SystemDiagnostics from "@/components/SystemDiagnostics";
+import NetworkAnalytics from "@/components/NetworkAnalytics";
+import PredictiveAnalytics from "@/components/PredictiveAnalytics";
+import MetricsOverview from "@/components/MetricsOverview";
 import {
   Agent,
   Network,
@@ -248,7 +251,7 @@ const Index = () => {
             onExport={handleExport}
             isRunning={isRunning}
             isComplete={isComplete}
-            isProcessing={isProcessingMessage} // Pass processing state to disable controls
+            isProcessing={isProcessingMessage}
           />
           
           {/* Settings button */}
@@ -287,8 +290,11 @@ const Index = () => {
           <AgentDetails agent={selectedAgent} />
         </div>
         
-        {/* Center and Right columns - Visualization, Messages, and Stats */}
+        {/* Center and Right columns - Enhanced with Futuristic Analytics */}
         <div className="md:col-span-9 space-y-6">
+          {/* System Diagnostics - Iron Man Style */}
+          <SystemDiagnostics />
+          
           {/* Network visualization and messages side by side */}
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
             {/* Network visualization */}
@@ -331,12 +337,33 @@ const Index = () => {
             </Sheet>
           </div>
           
-          {/* Statistics */}
-          <SimulationStats
-            network={network}
-            historyData={historyData}
-            statistics={statistics}
-          />
+          {/* Advanced Metrics Overview */}
+          <MetricsOverview network={network} statistics={statistics} />
+          
+          {/* Advanced Analytics Tabs */}
+          <Tabs defaultValue="analytics" className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="analytics">Network Analytics</TabsTrigger>
+              <TabsTrigger value="predictions">AI Predictions</TabsTrigger>
+              <TabsTrigger value="classic">Classic Stats</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="analytics" className="mt-6">
+              <NetworkAnalytics network={network} />
+            </TabsContent>
+            
+            <TabsContent value="predictions" className="mt-6">
+              <PredictiveAnalytics network={network} historyData={historyData} />
+            </TabsContent>
+            
+            <TabsContent value="classic" className="mt-6">
+              <SimulationStats
+                network={network}
+                historyData={historyData}
+                statistics={statistics}
+              />
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
     </div>
