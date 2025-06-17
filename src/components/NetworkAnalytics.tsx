@@ -16,6 +16,7 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
+  Cell,
 } from "recharts";
 
 interface NetworkAnalyticsProps {
@@ -81,12 +82,21 @@ const NetworkAnalytics: React.FC<NetworkAnalyticsProps> = ({ network }) => {
     { metric: 'Resilience', value: analytics.networkResilience, fullMark: 100 },
   ];
 
-  const scatterData = analytics.topInfluencers.map(inf => ({
-    x: inf.connections,
-    y: inf.influence,
-    believer: inf.believer,
-    id: inf.id,
-  }));
+  const believerScatterData = analytics.topInfluencers
+    .filter(inf => inf.believer)
+    .map(inf => ({
+      x: inf.connections,
+      y: inf.influence,
+      id: inf.id,
+    }));
+
+  const nonBelieverScatterData = analytics.topInfluencers
+    .filter(inf => !inf.believer)
+    .map(inf => ({
+      x: inf.connections,
+      y: inf.influence,
+      id: inf.id,
+    }));
 
   return (
     <div className="grid gap-4 md:grid-cols-2">
@@ -141,23 +151,29 @@ const NetworkAnalytics: React.FC<NetworkAnalyticsProps> = ({ network }) => {
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={200}>
-            <ScatterChart data={scatterData}>
+            <ScatterChart>
               <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
               <XAxis 
+                type="number"
                 dataKey="x" 
                 name="Connections"
                 stroke="#94a3b8"
                 label={{ value: 'Connections', position: 'insideBottom', offset: -5, fill: '#94a3b8' }}
               />
               <YAxis 
+                type="number"
                 dataKey="y" 
                 name="Influence"
                 stroke="#94a3b8"
                 label={{ value: 'Influence', angle: -90, position: 'insideLeft', fill: '#94a3b8' }}
               />
               <Scatter 
-                dataKey="y" 
-                fill={(entry: any) => entry.believer ? "#8B5CF6" : "#94A3B8"}
+                data={believerScatterData}
+                fill="#8B5CF6"
+              />
+              <Scatter 
+                data={nonBelieverScatterData}
+                fill="#94A3B8"
               />
             </ScatterChart>
           </ResponsiveContainer>
