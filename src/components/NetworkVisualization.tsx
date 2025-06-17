@@ -171,23 +171,6 @@ const NetworkVisualization: React.FC<NetworkVisualizationProps> = ({
         .force("x", d3.forceX(width / 2).strength(0.1))
         .force("y", d3.forceY(height / 2).strength(0.1));
 
-      // Create particle trails for information flow
-      const particleGroup = svg.append("g").attr("class", "particle-system");
-      
-      // Create animated data streams
-      const createDataStream = (startX: number, startY: number, endX: number, endY: number) => {
-        const particles = [];
-        for (let i = 0; i < 5; i++) {
-          const t = i / 4;
-          particles.push({
-            x: startX + (endX - startX) * t,
-            y: startY + (endY - startY) * t,
-            delay: i * 200,
-          });
-        }
-        return particles;
-      };
-
       // Enhanced links with data flow animation
       const link = svg
         .append("g")
@@ -200,22 +183,6 @@ const NetworkVisualization: React.FC<NetworkVisualizationProps> = ({
         .attr("stroke-opacity", 0.4)
         .attr("stroke-width", 2)
         .style("filter", "url(#holographicGlow)");
-
-      // Add animated data flow particles
-      links.forEach((linkData, index) => {
-        if (index % 3 === 0) { // Only animate some links to avoid clutter
-          const particles = createDataStream(0, 0, 100, 100); // Will be updated in tick
-          
-          particles.forEach((particle, pIndex) => {
-            particleGroup.append("circle")
-              .attr("class", "data-particle")
-              .attr("r", 2)
-              .attr("fill", "url(#particleGradient)")
-              .style("opacity", 0.8)
-              .style("animation", `particleFlow 2s linear infinite ${particle.delay}ms`);
-          });
-        }
-      });
 
       // Enhanced nodes with 3D-like effects
       const nodeGroup = svg.append("g").attr("class", "nodes");
@@ -324,31 +291,9 @@ const NetworkVisualization: React.FC<NetworkVisualizationProps> = ({
         svg.selectAll(".hud-overlay")
           .attr("transform", (d: any, i: number) => {
             const influentialNode = influentialNodes[i];
+            if (!influentialNode) return "translate(0,0)";
             const nodeData = nodes.find(n => n.id === influentialNode.id);
-            return nodeData ? `translate(${nodeData.x || 0},${nodeData.y || 0})` : "";
-          });
-
-        // Update particle positions along links
-        svg.selectAll(".data-particle")
-          .attr("cx", function(d: any, i: number) {
-            const linkIndex = Math.floor(i / 5);
-            const particleIndex = i % 5;
-            const link = links[linkIndex * 3]; // Since we only animate every 3rd link
-            if (link && typeof link.source === 'object' && typeof link.target === 'object') {
-              const t = (particleIndex / 4 + (animationFrame * 0.02)) % 1;
-              return link.source.x + (link.target.x - link.source.x) * t;
-            }
-            return 0;
-          })
-          .attr("cy", function(d: any, i: number) {
-            const linkIndex = Math.floor(i / 5);
-            const particleIndex = i % 5;
-            const link = links[linkIndex * 3];
-            if (link && typeof link.source === 'object' && typeof link.target === 'object') {
-              const t = (particleIndex / 4 + (animationFrame * 0.02)) % 1;
-              return link.source.y + (link.target.y - link.source.y) * t;
-            }
-            return 0;
+            return nodeData ? `translate(${nodeData.x || 0},${nodeData.y || 0})` : "translate(0,0)";
           });
       });
 
@@ -446,12 +391,6 @@ const NetworkVisualization: React.FC<NetworkVisualizationProps> = ({
             @keyframes rotate {
               from { transform: rotate(0deg); }
               to { transform: rotate(360deg); }
-            }
-            @keyframes particleFlow {
-              0% { opacity: 0; }
-              20% { opacity: 1; }
-              80% { opacity: 1; }
-              100% { opacity: 0; }
             }
           `}</style>
           <svg
