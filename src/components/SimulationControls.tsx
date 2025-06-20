@@ -166,17 +166,17 @@ const SimulationControls: React.FC<SimulationControlsProps> = ({
           </div>
         </div>
       </CardContent>
-      <CardFooter className="flex flex-col space-y-2">
-        <div className="flex space-x-2 w-full">
+      <CardFooter className="flex flex-col space-y-2 p-6">
+        <div className="grid grid-cols-2 gap-2 w-full">
           {isRunning ? (
-            <Button onClick={onPause} className="flex-1" variant="outline">
+            <Button onClick={onPause} className="col-span-2" variant="outline">
               <Pause className="mr-2 h-4 w-4" />
               Pause
             </Button>
           ) : (
             <Button 
               onClick={onRunContinuous} 
-              className="flex-1" 
+              className="col-span-2" 
               disabled={isComplete || isProcessing}
             >
               <Play className="mr-2 h-4 w-4" />
