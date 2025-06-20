@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useCallback } from "react";
 import { Network } from "@/lib/simulation";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
@@ -7,6 +6,8 @@ import { Share2, Zap, Eye } from "lucide-react";
 import NetworkContainer from "./NetworkContainer";
 import NetworkBackground from "./NetworkBackground";
 import D3NetworkRenderer from "./D3NetworkRenderer";
+import ConstellationBackground from "./ConstellationBackground";
+import BeliefPropagationEffects from "./BeliefPropagationEffects";
 
 interface NetworkVisualizationProps {
   network: Network;
@@ -100,6 +101,12 @@ const NetworkVisualization: React.FC<NetworkVisualizationProps> = ({
             style={{ display: 'block' }}
           />
           
+          <ConstellationBackground 
+            width={dimensions.width} 
+            height={dimensions.height} 
+            svgRef={svgRef}
+          />
+          
           <NetworkBackground 
             width={dimensions.width} 
             height={dimensions.height} 
@@ -107,14 +114,20 @@ const NetworkVisualization: React.FC<NetworkVisualizationProps> = ({
           />
           
           {hasValidNetwork && (
-            <D3NetworkRenderer
-              network={network}
-              selectedAgentId={selectedAgentId}
-              onSelectAgent={onSelectAgent}
-              width={dimensions.width}
-              height={dimensions.height}
-              svgRef={svgRef}
-            />
+            <>
+              <D3NetworkRenderer
+                network={network}
+                selectedAgentId={selectedAgentId}
+                onSelectAgent={onSelectAgent}
+                width={dimensions.width}
+                height={dimensions.height}
+                svgRef={svgRef}
+              />
+              <BeliefPropagationEffects
+                network={network}
+                svgRef={svgRef}
+              />
+            </>
           )}
         </NetworkContainer>
       </CardContent>
