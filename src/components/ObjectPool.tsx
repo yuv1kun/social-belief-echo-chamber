@@ -106,4 +106,8 @@ export class EffectPool {
   getActiveCount() {
     return this.activeEffects.size;
   }
+
+  getPoolSize() {
+    return this.effects.length;
+  }
 }
