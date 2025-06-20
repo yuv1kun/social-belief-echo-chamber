@@ -1,3 +1,4 @@
+
 import { toast } from "sonner";
 import { 
   calculateStatistics, 
@@ -90,7 +91,7 @@ export const handleRunContinuous = (
   stepInterval: number,
   handleSimulationStep: () => Promise<void>,
   setIsRunning: (running: boolean) => void,
-  setRunInterval: (interval: number | null) => void
+  setRunInterval: (interval: NodeJS.Timeout | null) => void
 ) => {
   setIsRunning(true);
   const interval = setInterval(handleSimulationStep, stepInterval);
@@ -99,9 +100,9 @@ export const handleRunContinuous = (
 };
 
 export const handlePause = (
-  runInterval: number | null,
+  runInterval: NodeJS.Timeout | null,
   setIsRunning: (running: boolean) => void,
-  setRunInterval: (interval: number | null) => void
+  setRunInterval: (interval: NodeJS.Timeout | null) => void
 ) => {
   setIsRunning(false);
   if (runInterval) {
@@ -112,10 +113,10 @@ export const handlePause = (
 };
 
 export const handleReset = async (
-  runInterval: number | null,
+  runInterval: NodeJS.Timeout | null,
   initializeSimulation: () => void,
   setIsRunning: (running: boolean) => void,
-  setRunInterval: (interval: number | null) => void
+  setRunInterval: (interval: NodeJS.Timeout | null) => void
 ) => {
   setIsRunning(false);
   if (runInterval) {

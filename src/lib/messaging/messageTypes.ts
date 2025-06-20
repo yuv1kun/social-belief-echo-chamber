@@ -1,8 +1,3 @@
 
-export interface Message {
-  id: string;
-  senderId: number;
-  content: string;
-  timestamp: number;
-  type?: string;
-}
+// Re-export Message from agents to avoid conflicts
+export { Message } from "../agents/agentTypes";

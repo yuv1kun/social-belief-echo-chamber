@@ -24,16 +24,22 @@ export function initializeAgents(count: number, believerPercentage: number): Age
   for (let i = 0; i < count; i++) {
     const genders: Gender[] = ["male", "female", "non-binary"];
     const gender = genders[Math.floor(Math.random() * genders.length)];
+    const isBeliever = i < believerCount;
     
     agents.push({
       id: i,
       name: generateAgentName(gender),
       gender,
       age: Math.floor(Math.random() * 50) + 18,
-      beliefs: i < believerCount ? 1 : 0,
+      beliefs: isBeliever ? 1 : 0,
+      believer: isBeliever,
       susceptibility: Math.random(),
       traits: generateRandomTraits(),
-      traitHistory: []
+      traitHistory: [],
+      neighbors: [],
+      beliefHistory: [isBeliever],
+      messages: [],
+      receivedMessages: []
     });
   }
   

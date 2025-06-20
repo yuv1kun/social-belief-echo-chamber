@@ -1,18 +1,10 @@
 
-import { Agent } from "../agents/agentTypes";
+import { Agent, Message } from "../agents/agentTypes";
 
 export interface Link {
   source: number;
   target: number;
   strength?: number;
-}
-
-export interface Message {
-  id: string;
-  senderId: number;
-  content: string;
-  timestamp: number;
-  type?: string;
 }
 
 export interface Network {

@@ -5,8 +5,6 @@ export * from "./agents/agentBehavior";
 export * from "./network/networkTypes";
 export * from "./network/networkGeneration";
 export * from "./network/networkAnalysis";
-export * from "./messaging/messageTypes";
-export * from "./messaging/messageGeneration";
 export * from "./data/topics";
 export * from "./export/exportUtils";
 

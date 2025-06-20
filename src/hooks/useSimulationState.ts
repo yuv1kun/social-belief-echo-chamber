@@ -22,7 +22,7 @@ export const useSimulationState = () => {
   const [selectedAgentId, setSelectedAgentId] = useState<number | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
-  const [runInterval, setRunInterval] = useState<number | null>(null);
+  const [runInterval, setRunInterval] = useState<NodeJS.Timeout | null>(null);
   const [historyData, setHistoryData] = useState<any[]>([]);
   const [showSettings, setShowSettings] = useState(false);
   const [isProcessingMessage, setIsProcessingMessage] = useState(false);
