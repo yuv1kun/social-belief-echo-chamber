@@ -1,7 +1,7 @@
 
 import React, { useEffect, useRef, useCallback } from "react";
 import { Network } from "@/lib/simulation";
-import { usePerformance } from "./PerformanceManager";
+import { useEnhancedPerformance } from "./EnhancedPerformanceManager";
 
 interface CanvasNetworkRendererProps {
   network: Network;
@@ -19,7 +19,7 @@ const CanvasNetworkRenderer: React.FC<CanvasNetworkRendererProps> = ({
   height,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const { registerAnimation, unregisterAnimation, performanceLevel } = usePerformance();
+  const { registerAnimation, unregisterAnimation, performanceLevel } = useEnhancedPerformance();
   const nodePositionsRef = useRef<Map<number, { x: number; y: number }>>(new Map());
   const animationDataRef = useRef({
     particles: [] as any[],
