@@ -18,15 +18,38 @@ interface MetricsOverviewProps {
 }
 
 const MetricsOverview: React.FC<MetricsOverviewProps> = ({ network, statistics }) => {
+  // Calculate dynamic advanced metrics based on actual network data
   const advancedMetrics = {
-    networkEfficiency: (network.links.length / (statistics.totalAgents * (statistics.totalAgents - 1) / 2)) * 100,
-    influenceIndex: statistics.averageDegree * statistics.believerPercentage / 100,
-    propagationRate: network.messageLog.length / Math.max(1, network.nodes.length),
-    socialCohesion: statistics.averageSusceptibility * 100,
-    messageVelocity: network.messageLog.filter(m => 
-      Date.now() - new Date(m.timestamp || Date.now()).getTime() < 30000
-    ).length,
-    networkStability: 100 - (Math.abs(50 - statistics.believerPercentage) * 2),
+    // Network efficiency based on actual connections vs possible connections
+    networkEfficiency: statistics.totalAgents > 1 
+      ? (network.links.length / (statistics.totalAgents * (statistics.totalAgents - 1) / 2)) * 100
+      : 0,
+    
+    // Influence index based on believers' connectivity and percentage
+    influenceIndex: statistics.totalAgents > 0 
+      ? (statistics.averageDegree * statistics.believerPercentage / 100) * (statistics.believers / statistics.totalAgents)
+      : 0,
+    
+    // Propagation rate based on actual message activity
+    propagationRate: statistics.totalAgents > 0 && network.messageLog.length > 0
+      ? network.messageLog.length / statistics.totalAgents
+      : 0,
+    
+    // Social cohesion based on network density and susceptibility
+    socialCohesion: statistics.totalAgents > 0
+      ? ((statistics.averageSusceptibility * 100) + (network.links.length / Math.max(1, statistics.totalAgents - 1))) / 2
+      : 0,
+    
+    // Message velocity based on recent messages (last 30 seconds)
+    messageVelocity: network.messageLog.filter(m => {
+      const messageTime = new Date(m.timestamp || Date.now()).getTime();
+      return Date.now() - messageTime < 30000;
+    }).length,
+    
+    // Network stability based on belief distribution balance and connections
+    networkStability: statistics.totalAgents > 0
+      ? Math.min(100, (100 - Math.abs(50 - statistics.believerPercentage)) + (statistics.averageDegree * 10))
+      : 0,
   };
 
   const getMetricColor = (value: number, thresholds: [number, number]) => {

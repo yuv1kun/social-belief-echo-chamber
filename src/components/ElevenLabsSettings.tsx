@@ -167,21 +167,22 @@ const ElevenLabsSettings: React.FC = () => {
         <div className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="elevenlabs-key">ElevenLabs API Key</Label>
-            <div className="flex">
+            <div className="flex gap-2">
               <Input
                 id="elevenlabs-key"
                 type={isKeyVisible ? "text" : "password"}
                 placeholder={isConfigured && !isKeyVisible ? "••••••••••••••••" : "Enter your ElevenLabs API key (starts with 'sk_')"}
                 value={apiKey}
                 onChange={(e) => setApiKeyState(e.target.value)}
-                className="flex-1"
+                className="flex-1 min-w-0"
               />
               {isConfigured && (
                 <Button 
                   type="button" 
                   variant="outline" 
                   onClick={toggleKeyVisibility} 
-                  className="ml-2"
+                  className="shrink-0"
+                  size="sm"
                 >
                   {isKeyVisible ? "Hide" : "Show"}
                 </Button>
@@ -209,20 +210,22 @@ const ElevenLabsSettings: React.FC = () => {
           </div>
         </div>
       </CardContent>
-      <CardFooter className="flex flex-col sm:flex-row gap-2 border-t pt-4">
-        <Button 
-          variant="outline" 
-          onClick={handleClearKey} 
-          disabled={!isConfigured || isSaving}
-          className="w-full sm:w-auto"
-        >
-          Clear Key
-        </Button>
-        <div className="flex-1 flex gap-2 w-full">
+      <CardFooter className="flex flex-col gap-3 border-t pt-4">
+        <div className="flex flex-col sm:flex-row gap-2 w-full">
+          <Button 
+            variant="outline" 
+            onClick={handleClearKey} 
+            disabled={!isConfigured || isSaving}
+            className="w-full sm:w-auto order-2 sm:order-1"
+            size="sm"
+          >
+            Clear Key
+          </Button>
           <Button 
             onClick={handleSaveKey}
             disabled={isSaving}
-            className="flex-1"
+            className="flex-1 order-1 sm:order-2"
+            size="sm"
           >
             {isSaving ? (
               <>
@@ -233,25 +236,26 @@ const ElevenLabsSettings: React.FC = () => {
               "Save Key"
             )}
           </Button>
-          <Button 
-            variant="secondary"
-            className="gap-2"
-            onClick={handleTestVoice}
-            disabled={!isConfigured || isTestingVoice}
-          >
-            {isTestingVoice ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Testing...
-              </>
-            ) : (
-              <>
-                <Volume2 className="h-4 w-4" />
-                Test Voice
-              </>
-            )}
-          </Button>
         </div>
+        <Button 
+          variant="secondary"
+          className="w-full gap-2"
+          onClick={handleTestVoice}
+          disabled={!isConfigured || isTestingVoice}
+          size="sm"
+        >
+          {isTestingVoice ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Testing...
+            </>
+          ) : (
+            <>
+              <Volume2 className="h-4 w-4" />
+              Test Voice
+            </>
+          )}
+        </Button>
       </CardFooter>
     </Card>
   );
