@@ -14,7 +14,7 @@ import HybridNetworkRenderer from "./HybridNetworkRenderer";
 interface NetworkVisualizationProps {
   network: Network;
   selectedAgentId: number | null;
-  onSelectAgent: (id: number) => voi[d;
+  onSelectAgent: (id: number) => void;
 }
 
 const NetworkVisualization: React.FC<NetworkVisualizationProps> = ({
