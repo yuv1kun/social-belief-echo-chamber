@@ -1,4 +1,3 @@
-
 // Gemini API integration for generating more diverse agent conversations
 import { toast } from "sonner";
 import { Agent, Network, Message } from "@/lib/simulation";
@@ -106,7 +105,7 @@ export async function testGeminiApiKey(apiKey: string): Promise<boolean> {
       body: JSON.stringify({
         contents: [{
           parts: [{
-            text: "Hello"
+            text: "Hello, test message"
           }]
         }],
         generationConfig: {
@@ -152,21 +151,12 @@ export async function generateMessage(
   
   // Extract recent conversation context
   const conversationContext = recentMessages
-    .slice(-5)
+    .slice(-3)
     .map(msg => msg.content)
     .join("\n");
   
-  // Create a unique cache key based on inputs
-  const cacheKey = `${agent.id}-${network.currentTopic}-${messageType}-${lastSpeaker}-${conversationContext.substring(0, 50)}`;
-  
-  // Check cache first
-  if (messageCache.has(cacheKey)) {
-    console.log("Using cached message");
-    return messageCache.get(cacheKey) || null;
-  }
-  
   // Build prompt based on message type and context
-  let prompt = `You are Agent${agent.id}, a person who is ${describeAgentPersonality(agent)}. `;
+  let prompt = `You are ${agent.name}, a person who is ${describeAgentPersonality(agent)}. `;
   prompt += `You are in a group chat discussing the topic: "${network.currentTopic}". `;
   
   if (conversationContext) {
@@ -178,7 +168,7 @@ export async function generateMessage(
       prompt += "Share your opinion on this topic based on your personality traits.";
       break;
     case "QUESTION":
-      prompt += "Ask a thought-provoking question about this topic that encourages others to respond.";
+      prompt += "Ask a thought-provoking question about this topic.";
       break;
     case "JOKE":
       prompt += "Make a lighthearted joke or humorous observation related to this topic.";
@@ -188,20 +178,20 @@ export async function generateMessage(
       break;
     case "AGREEMENT":
       if (lastSpeaker) {
-        prompt += `Respond to ${lastSpeaker} by agreeing with their point and adding your own perspective.`;
+        prompt += `Respond to ${lastSpeaker} by agreeing with their point and adding your perspective.`;
       } else {
-        prompt += "Express agreement with a general point about the topic and add your own thoughts.";
+        prompt += "Express agreement with a general point about the topic.";
       }
       break;
     case "DISAGREEMENT":
       if (lastSpeaker) {
-        prompt += `Respond to ${lastSpeaker} by politely disagreeing and explaining your alternative viewpoint.`;
+        prompt += `Respond to ${lastSpeaker} by politely disagreeing and explaining your viewpoint.`;
       } else {
-        prompt += "Express disagreement with a common view on this topic and explain your reasoning.";
+        prompt += "Express disagreement with a common view on this topic.";
       }
       break;
     case "OFFTOPIC":
-      prompt += "Make a slightly off-topic but still somewhat related comment about this subject.";
+      prompt += "Make a slightly off-topic but related comment about this subject.";
       break;
     default:
       prompt += "Contribute something interesting to the conversation about this topic.";
@@ -210,9 +200,8 @@ export async function generateMessage(
   prompt += "\nKeep your message brief (1-3 sentences). Don't include any prefixes like 'Agent1:' - just the message content.";
   
   try {
-    console.log(`Making Gemini API request with key: ${currentApiKey.substring(0, 10)}...`);
+    console.log(`Making Gemini API request for Agent #${agent.id} with prompt type: ${messageType}`);
     
-    // Use query parameter instead of header for API key
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${currentApiKey}`, {
       method: "POST",
       headers: {
@@ -238,7 +227,6 @@ export async function generateMessage(
       const errorText = await response.text();
       console.error("Gemini API error:", response.status, errorText);
       
-      // If it's an authentication error, show a helpful message
       if (response.status === 400 || response.status === 401) {
         toast.error("Invalid Gemini API key. Please check your API key in settings.");
       } else {
@@ -248,19 +236,15 @@ export async function generateMessage(
     }
     
     const data = await response.json();
-    console.log("Gemini API response data:", data);
+    console.log("Gemini API response received successfully");
     
     if (!data.candidates || data.candidates.length === 0) {
-      console.error("No response from Gemini API");
+      console.error("No response candidates from Gemini API");
       return null;
     }
     
-    // Extract the generated text
     const generatedText = data.candidates[0].content.parts[0].text.trim();
-    console.log(`Generated message: "${generatedText}"`);
-    
-    // Store in cache
-    messageCache.set(cacheKey, generatedText);
+    console.log(`Generated message for Agent #${agent.id}: "${generatedText}"`);
     
     return generatedText;
   } catch (error) {
@@ -268,4 +252,26 @@ export async function generateMessage(
     toast.error("Failed to connect to Gemini API");
     return null;
   }
+}
+
+// Helper function to get content from templates (kept for backwards compatibility but not used when Gemini is enabled)
+function getTemplateContent(messageType: string, topic: string, lastSpeaker: string = ""): string {
+  // Get templates for the selected message type
+  let templates;
+  let template;
+  
+  // For persona-specific phrases
+  if (["INTELLECTUAL", "CASUAL", "ENTHUSIASTIC", "SKEPTICAL", "SUPPORTIVE"].includes(messageType)) {
+    templates = PERSONA_PHRASES[messageType as keyof typeof PERSONA_PHRASES];
+    template = templates[Math.floor(Math.random() * templates.length)];
+  } else {
+    // Normal message templates
+    templates = MESSAGE_TEMPLATES[messageType as keyof typeof MESSAGE_TEMPLATES];
+    template = templates[Math.floor(Math.random() * templates.length)];
+  }
+  
+  // Generate the content
+  return template
+    .replace("{topic}", topic)
+    .replace("{lastSpeaker}", lastSpeaker);
 }

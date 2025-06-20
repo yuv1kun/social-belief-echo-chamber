@@ -9,6 +9,7 @@ import {
   getRandomTopic,
 } from "@/lib/simulation";
 import { initializeTTS, cancelSpeech, getApiKey } from "@/lib/elevenLabsSpeech";
+import { initializeGemini } from "@/lib/geminiApi";
 
 interface UseSimulationInitializationProps {
   config: any;
@@ -80,7 +81,9 @@ export const useSimulationInitialization = ({
   }, [config.agentCount, config.initialBelieverPercentage, config.networkDensity, config.networkType, setNetwork, setSelectedAgentId, setConfig, setStatistics, setHistoryData, setIsInitialized]);
 
   useEffect(() => {
+    // Initialize both TTS and Gemini on app startup
     initializeTTS();
+    initializeGemini();
     initializeSimulation();
     
     if (!getApiKey()) {

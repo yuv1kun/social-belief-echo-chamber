@@ -12,7 +12,7 @@ export const findLastMessageFromSender = (messages: Message[], senderId: number)
   return undefined;
 };
 
-// Enhanced step function with Gemini-only message generation
+// Enhanced step function with improved message generation
 export const enhanceNetworkMessages = async (network: Network): Promise<Network> => {
   // Check if Gemini API is available and properly configured
   const isGeminiEnabled = getGeminiEnabled();
@@ -35,16 +35,15 @@ export const enhanceNetworkMessages = async (network: Network): Promise<Network>
   // Create a new updated message log with enhanced messages
   const enhancedMessageLog = [...network.messageLog];
   
-  // Find ALL newly created messages that need enhancement
-  // Look for messages that are clearly template-based or basic
-  const messagesToEnhance = network.messageLog.filter(msg => {
+  // Find the most recent messages that need enhancement (last few messages)
+  const messagesToEnhance = network.messageLog.slice(-5).filter(msg => {
     const content = msg.content;
     
     // Remove agent name prefix to check actual content
     const colonIndex = content.indexOf(':');
     const actualContent = colonIndex > 0 ? content.substring(colonIndex + 1).trim() : content;
     
-    // Check if message needs Gemini enhancement
+    // Check if message needs Gemini enhancement - look for basic/template patterns
     const needsEnhancement = 
       // Template phrases that indicate basic generation
       actualContent.includes("This has been on my mind recently") || 
@@ -55,20 +54,16 @@ export const enhanceNetworkMessages = async (network: Network): Promise<Network>
       actualContent.includes("Curious what you all think") ||
       actualContent.includes("Been hearing a lot about") ||
       actualContent.includes("Thoughts?") ||
-      actualContent.includes("READ THIS NOW!") ||
-      actualContent.includes("*sends link*") ||
-      // Very generic or short messages
-      actualContent.split(' ').length < 6 || // Very short messages
-      // Messages that look template-like
-      actualContent.includes("{topic}") ||
       actualContent.includes("lately.") ||
+      // Very generic or short messages
+      actualContent.split(' ').length < 8 || // Short messages
       // Basic conversation starters
       (actualContent.includes("lately") && actualContent.includes("Thoughts"));
     
     return needsEnhancement;
   });
   
-  console.log(`Found ${messagesToEnhance.length} messages to enhance with Gemini`);
+  console.log(`Found ${messagesToEnhance.length} recent messages to enhance with Gemini`);
   
   // Process each message that needs enhancement
   for (const msg of messagesToEnhance) {
@@ -94,8 +89,8 @@ export const enhanceNetworkMessages = async (network: Network): Promise<Network>
       const isLastMessageFromSameAgent = lastMessage.senderId === agent.id;
       
       if (!isLastMessageFromSameAgent) {
-        // Different agent - much higher chance to respond/react to previous message (90%)
-        if (Math.random() < 0.9) {
+        // Different agent - higher chance to respond/react to previous message
+        if (Math.random() < 0.8) {
           // Choose response type based on agent personality
           if (agent.traits.agreeableness > 0.6) {
             messageType = Math.random() < 0.6 ? "AGREEMENT" : "SUPPORTIVE";
@@ -105,7 +100,6 @@ export const enhanceNetworkMessages = async (network: Network): Promise<Network>
             messageType = Math.random() < 0.4 ? "OPINION" : "STORY";
           }
         } else {
-          // Occasionally ask follow-up questions
           messageType = "QUESTION";
         }
       }
@@ -125,13 +119,12 @@ export const enhanceNetworkMessages = async (network: Network): Promise<Network>
     // Get a last speaker to reference (if applicable)
     let lastSpeaker = "";
     if (["AGREEMENT", "DISAGREEMENT", "SUPPORTIVE"].includes(messageType) && recentSpeakerIds.length > 0) {
-      // Find a different agent to reference
       const otherAgentIds = recentSpeakerIds.filter(id => id !== agent.id);
       if (otherAgentIds.length > 0) {
         const lastSpeakerId = otherAgentIds[0];
         const speakerAgent = network.nodes.find(a => a.id === lastSpeakerId);
         if (speakerAgent) {
-          const previousMessage = findLastMessageFromSender(network.messageLog, lastSpeakerId);
+          const previousMessage = recentMessages.find(m => m.senderId === lastSpeakerId);
           if (previousMessage) {
             const colonIndex = previousMessage.content.indexOf(':');
             if (colonIndex > 0) {
@@ -163,7 +156,7 @@ export const enhanceNetworkMessages = async (network: Network): Promise<Network>
         console.log(`Gemini generated message for Agent #${agent.id}: "${content}"`);
         
         // Add reactions/emoji to make it more conversational
-        const addReaction = Math.random() < 0.35;
+        const addReaction = Math.random() < 0.25;
         const reaction = addReaction ? ` ${REACTIONS[Math.floor(Math.random() * REACTIONS.length)]}` : '';
         
         // Final message with name prefix and optional reaction
@@ -180,11 +173,9 @@ export const enhanceNetworkMessages = async (network: Network): Promise<Network>
         }
       } else {
         console.log(`Gemini failed to generate message for agent #${agent.id}, keeping original message`);
-        // Keep the original message if Gemini fails
       }
     } catch (error) {
       console.error("Error generating message with Gemini:", error);
-      // Keep the original message if there's an error
     }
   }
   
