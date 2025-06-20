@@ -22,3 +22,6 @@ export interface SimulationConfig {
   steps: number;
   currentStep: number;
 }
+
+// Re-export Message for convenience
+export type { Message } from "../agents/agentTypes";

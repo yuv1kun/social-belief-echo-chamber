@@ -24,7 +24,7 @@ export const handleStep = async ({
 }: {
   network: Network;
   config: SimulationConfig;
-  runInterval: number | null;
+  runInterval: NodeJS.Timeout | null;
   selectedAgentId: number | null;
   isProcessingMessage: boolean;
   setNetwork: (network: Network) => void;
@@ -32,7 +32,7 @@ export const handleStep = async ({
   setStatistics: (stats: any) => void;
   setHistoryData: (data: any[]) => void;
   setIsRunning: (running: boolean) => void;
-  setRunInterval: (interval: number | null) => void;
+  setRunInterval: (interval: NodeJS.Timeout | null) => void;
 }) => {
   if (config.currentStep >= config.steps) {
     setIsRunning(false);

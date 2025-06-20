@@ -10,7 +10,7 @@ const STEP_INTERVAL = 10000;
 interface UseSimulationHandlersProps {
   network: any;
   config: any;
-  runInterval: number | null;
+  runInterval: NodeJS.Timeout | null;
   selectedAgentId: number | null;
   isProcessingMessage: boolean;
   setNetwork: any;

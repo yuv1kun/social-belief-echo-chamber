@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AgentMessages from "./AgentMessages";
@@ -251,10 +250,13 @@ const NetworkMessages: React.FC<NetworkMessagesProps> = ({
       return;
     }
     
+    // Handle gender mapping for speech API (only supports male/female)
+    const speechGender: "male" | "female" = gender === "non-binary" ? "female" : gender as "male" | "female";
+    
     // Queue speech for this message
     queueSpeech(
       nextMessage.content, 
-      gender, 
+      speechGender, 
       () => setSpeakingMessageId(nextMessage.id),
       () => {
         setSpeakingMessageId(null);
