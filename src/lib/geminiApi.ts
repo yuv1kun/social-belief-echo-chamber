@@ -1,6 +1,7 @@
 // Gemini API integration for generating more diverse agent conversations
 import { toast } from "sonner";
 import { Agent, Network, Message } from "@/lib/simulation";
+import { MESSAGE_TEMPLATES, PERSONA_PHRASES } from "./messaging/messageTemplates";
 
 // Local storage keys
 const GEMINI_API_KEY_STORAGE_KEY = "gemini-api-key";
