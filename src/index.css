@@ -47,150 +47,86 @@
   }
 }
 
-/* Enhanced simulation styles */
-.node {
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.node:hover {
-  filter: brightness(1.2);
-}
-
-.link {
-  transition: all 0.3s ease;
-}
-
-/* Optimized CSS animations for better performance */
-@keyframes optimizedPulse {
+/* Highly optimized animations for maximum performance */
+@keyframes optimizedStarTwinkle {
   0%, 100% {
     opacity: 0.3;
     transform: scale(1);
   }
   50% {
-    opacity: 0.8;
-    transform: scale(1.02);
-  }
-}
-
-@keyframes optimizedGlow {
-  0%, 100% {
-    filter: drop-shadow(0 0 3px currentColor);
-  }
-  50% {
-    filter: drop-shadow(0 0 8px currentColor);
-  }
-}
-
-@keyframes optimizedFloat {
-  0%, 100% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(-5px);
-  }
-}
-
-@keyframes optimizedStarTwinkle {
-  0%, 100% {
-    opacity: 0.4;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 1;
-    transform: scale(1.1);
+    opacity: 0.6;
+    transform: scale(1.05);
   }
 }
 
 @keyframes optimizedConstellationPulse {
   0%, 100% {
-    opacity: 0.15;
+    opacity: 0.1;
   }
   50% {
-    opacity: 0.3;
+    opacity: 0.2;
   }
 }
 
-/* Apply optimized animations */
-.outer-glow {
-  animation: optimizedPulse 3s ease-in-out infinite;
+@keyframes optimizedNodePulse {
+  0%, 100% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.01);
+  }
 }
 
-.inner-core {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  will-change: transform, filter;
-}
-
-.inner-core:hover {
-  animation: optimizedGlow 2s ease-in-out infinite;
-}
-
-.trait-indicator {
-  animation: optimizedFloat 4s ease-in-out infinite;
-}
-
-.node-label {
-  transition: font-size 0.2s ease, font-weight 0.2s ease;
-}
-
-.node-group:hover .node-label {
-  font-size: 12px;
-  font-weight: 900;
-}
-
-/* Optimized star animations with CSS instead of JS */
+/* Apply optimized animations with longer durations */
 .optimized-star {
-  animation: optimizedStarTwinkle 4s ease-in-out infinite;
+  animation: optimizedStarTwinkle 6s ease-in-out infinite;
   will-change: opacity, transform;
 }
 
 .constellation-line {
-  animation: optimizedConstellationPulse 6s ease-in-out infinite;
+  animation: optimizedConstellationPulse 8s ease-in-out infinite;
   will-change: opacity;
 }
 
-/* Performance optimized particle effects */
-.particle {
-  transition: opacity 0.1s ease;
-  will-change: transform, opacity;
+.outer-glow {
+  animation: optimizedNodePulse 4s ease-in-out infinite;
 }
 
-.click-ripple {
-  pointer-events: none;
-  will-change: transform, opacity;
+/* Reduce all transition durations for snappier feel */
+.inner-core {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform, filter;
 }
 
-/* Enhanced link styles with performance in mind */
+.node-label {
+  transition: font-size 0.1s ease, font-weight 0.1s ease;
+}
+
 .links line {
-  transition: stroke-width 0.2s ease, stroke-opacity 0.2s ease;
+  transition: stroke-width 0.1s ease, stroke-opacity 0.1s ease;
   will-change: stroke-width, stroke-opacity;
 }
 
-.links line:hover {
-  stroke-width: 3;
-  stroke-opacity: 0.8;
-}
-
-/* Optimized belief propagation effects */
-.belief-wave {
+.particle {
+  transition: opacity 0.05s ease;
   will-change: transform, opacity;
 }
 
-.influence-halo {
+/* Performance optimizations */
+.belief-wave,
+.influence-halo,
+.conversion-particle,
+.click-ripple {
   will-change: transform, opacity;
 }
 
-.conversion-particle {
-  will-change: transform, opacity;
-}
-
-/* Reduce motion for users who prefer it */
-@media (prefers-reduced-motion: reduce) {
-  .outer-glow,
-  .inner-core:hover,
-  .trait-indicator,
+/* Disable animations for better performance on low-end devices */
+@media (max-width: 768px), (prefers-reduced-motion: reduce) {
   .optimized-star,
-  .constellation-line {
+  .constellation-line,
+  .outer-glow {
     animation: none;
   }
   
@@ -202,12 +138,11 @@
   }
 }
 
-/* GPU acceleration for smooth animations */
-.outer-glow,
-.inner-core,
-.trait-indicator,
+/* Aggressive GPU acceleration */
 .optimized-star,
 .constellation-line,
+.outer-glow,
+.inner-core,
 .particle,
 .belief-wave,
 .influence-halo,
@@ -215,4 +150,18 @@
   transform: translateZ(0);
   backface-visibility: hidden;
   perspective: 1000px;
+  contain: layout style paint;
+}
+
+/* Minimize repaints and reflows */
+.node-group {
+  contain: layout style paint;
+}
+
+.links {
+  contain: layout style paint;
+}
+
+.constellation-background {
+  contain: layout style paint;
 }

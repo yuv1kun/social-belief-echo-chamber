@@ -24,20 +24,20 @@ const OptimizedConstellationBackground: React.FC<OptimizedConstellationBackgroun
       const constellationGroup = svg.insert("g", ":first-child")
         .attr("class", "constellation-background");
 
-      // Reduce star count based on screen size for better performance
-      const starDensity = Math.min(1, (width * height) / 500000); // Adaptive density
-      const starCount = Math.floor(Math.min(50, (width * height) / 12000 * starDensity));
+      // Drastically reduce star count for better performance
+      const starDensity = Math.min(0.5, (width * height) / 1000000); // Even lower density
+      const starCount = Math.floor(Math.min(25, (width * height) / 20000 * starDensity)); // Fewer stars
       
       const stars = Array.from({ length: starCount }, (_, i) => ({
         id: i,
         x: Math.random() * width,
         y: Math.random() * height,
-        size: Math.random() * 1.5 + 0.5,
-        opacity: Math.random() * 0.6 + 0.4,
-        animationDelay: Math.random() * 3
+        size: Math.random() * 1 + 0.5, // Smaller stars
+        opacity: Math.random() * 0.4 + 0.3, // Lower opacity
+        animationDelay: Math.random() * 4 // Longer delays
       }));
 
-      // Create stars with CSS animation instead of D3 transitions
+      // Create stars with minimal effects
       const starElements = constellationGroup.selectAll(".star")
         .data(stars)
         .join("circle")
@@ -47,11 +47,10 @@ const OptimizedConstellationBackground: React.FC<OptimizedConstellationBackgroun
         .attr("r", d => d.size)
         .attr("fill", "#06B6D4")
         .attr("opacity", d => d.opacity)
-        .style("animation-delay", d => `${d.animationDelay}s`)
-        .style("filter", "url(#starGlow)");
+        .style("animation-delay", d => `${d.animationDelay}s`);
 
-      // Create fewer constellation connections for better performance
-      const connectionCount = Math.min(Math.floor(starCount / 12), 8);
+      // Minimal constellation connections
+      const connectionCount = Math.min(Math.floor(starCount / 15), 4); // Fewer connections
       for (let i = 0; i < connectionCount; i++) {
         const star1 = stars[Math.floor(Math.random() * stars.length)];
         const star2 = stars[Math.floor(Math.random() * stars.length)];
@@ -60,8 +59,8 @@ const OptimizedConstellationBackground: React.FC<OptimizedConstellationBackgroun
           Math.pow(star1.x - star2.x, 2) + Math.pow(star1.y - star2.y, 2)
         );
         
-        // Only connect nearby stars
-        if (distance < Math.min(150, Math.min(width, height) / 4)) {
+        // Only connect very nearby stars
+        if (distance < Math.min(100, Math.min(width, height) / 6)) {
           constellationGroup.append("line")
             .attr("class", "constellation-line")
             .attr("x1", star1.x)
@@ -69,13 +68,12 @@ const OptimizedConstellationBackground: React.FC<OptimizedConstellationBackgroun
             .attr("x2", star2.x)
             .attr("y2", star2.y)
             .attr("stroke", "#06B6D4")
-            .attr("stroke-width", 0.5)
-            .attr("stroke-opacity", 0.15)
-            .style("filter", "url(#constellationGlow)");
+            .attr("stroke-width", 0.3) // Thinner lines
+            .attr("stroke-opacity", 0.1); // Very low opacity
         }
       }
 
-      // Add optimized filters
+      // Minimal filters for better performance
       let defs = svg.select("defs");
       if (defs.empty()) {
         defs = svg.append("defs");
@@ -84,35 +82,18 @@ const OptimizedConstellationBackground: React.FC<OptimizedConstellationBackgroun
       if (defs.select("#starGlow").empty()) {
         const starFilter = defs.append("filter")
           .attr("id", "starGlow")
-          .attr("x", "-50%")
-          .attr("y", "-50%")
-          .attr("width", "200%")
-          .attr("height", "200%");
+          .attr("x", "-25%")
+          .attr("y", "-25%")
+          .attr("width", "150%")
+          .attr("height", "150%");
 
         starFilter.append("feGaussianBlur")
-          .attr("stdDeviation", "0.8")
+          .attr("stdDeviation", "0.5") // Reduced blur
           .attr("result", "starBlur");
 
         const starMerge = starFilter.append("feMerge");
         starMerge.append("feMergeNode").attr("in", "starBlur");
         starMerge.append("feMergeNode").attr("in", "SourceGraphic");
-      }
-
-      if (defs.select("#constellationGlow").empty()) {
-        const constellationFilter = defs.append("filter")
-          .attr("id", "constellationGlow")
-          .attr("x", "-50%")
-          .attr("y", "-50%")
-          .attr("width", "200%")
-          .attr("height", "200%");
-
-        constellationFilter.append("feGaussianBlur")
-          .attr("stdDeviation", "0.3")
-          .attr("result", "constellationBlur");
-
-        const constellationMerge = constellationFilter.append("feMerge");
-        constellationMerge.append("feMergeNode").attr("in", "constellationBlur");
-        constellationMerge.append("feMergeNode").attr("in", "SourceGraphic");
       }
     });
   }, [width, height, svgRef]);
