@@ -1,6 +1,6 @@
-import { Network, Message } from "@/lib/simulation";
-import { MESSAGE_TEMPLATES, REACTIONS, PERSONA_PHRASES } from "./MessageTemplates";
-import { generateMessage, getGeminiEnabled, getGeminiApiKey } from "@/lib/geminiApi";
+import { Network, Message } from "../network/networkTypes";
+import { MESSAGE_TEMPLATES, REACTIONS, PERSONA_PHRASES } from "./messageTemplates";
+import { generateMessage, getGeminiEnabled, getGeminiApiKey } from "../geminiApi";
 
 // Function to find the most recent message from a specific sender
 export const findLastMessageFromSender = (messages: Message[], senderId: number): Message | undefined => {

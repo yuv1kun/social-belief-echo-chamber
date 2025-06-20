@@ -1,6 +1,4 @@
 
-import React from 'react';
-
 // Message templates for more diverse conversation patterns
 export const MESSAGE_TEMPLATES = {
   OPINION: [
@@ -118,4 +116,3 @@ export const PERSONA_PHRASES = {
     "You all make such good points about {topic}!"
   ]
 };
-

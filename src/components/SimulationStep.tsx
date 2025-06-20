@@ -1,26 +1,12 @@
-
-import { Network, Agent, SimulationConfig, runBeliefPropagationStep, calculateStatistics, generateBeliefHistoryData } from "@/lib/simulation";
-import { enhanceNetworkMessages } from "./MessageUtils";
 import { toast } from "sonner";
-import { cancelSpeech } from "@/lib/elevenLabsSpeech";
-import { initializeGemini, getGeminiEnabled, getGeminiApiKey } from "@/lib/geminiApi";
-
-export interface StepHandlerProps {
-  network: Network;
-  config: SimulationConfig;
-  runInterval: number | null;
-  selectedAgentId: number | null;
-  isProcessingMessage: boolean;
-  setNetwork: React.Dispatch<React.SetStateAction<Network>>;
-  setConfig: React.Dispatch<React.SetStateAction<SimulationConfig>>;
-  setStatistics: React.Dispatch<React.SetStateAction<any>>;
-  setHistoryData: React.Dispatch<React.SetStateAction<any[]>>;
-  setIsRunning: React.Dispatch<React.SetStateAction<boolean>>;
-  setRunInterval: React.Dispatch<React.SetStateAction<number | null>>;
-}
-
-// Initialize Gemini when the module loads
-initializeGemini();
+import { 
+  calculateStatistics, 
+  generateBeliefHistoryData, 
+  simulateMessageExchange,
+  Network,
+  SimulationConfig
+} from "@/lib/simulation";
+import { enhanceNetworkMessages } from "@/lib/messaging/messageEnhancement";
 
 export const handleStep = async ({
   network,
@@ -34,74 +20,64 @@ export const handleStep = async ({
   setHistoryData,
   setIsRunning,
   setRunInterval
-}: StepHandlerProps): Promise<void> => {
+}: {
+  network: Network;
+  config: SimulationConfig;
+  runInterval: number | null;
+  selectedAgentId: number | null;
+  isProcessingMessage: boolean;
+  setNetwork: (network: Network) => void;
+  setConfig: (config: SimulationConfig) => void;
+  setStatistics: (stats: any) => void;
+  setHistoryData: (data: any[]) => void;
+  setIsRunning: (running: boolean) => void;
+  setRunInterval: (interval: number | null) => void;
+}) => {
   if (config.currentStep >= config.steps) {
-    toast.info("Simulation complete");
     setIsRunning(false);
     if (runInterval) {
       clearInterval(runInterval);
       setRunInterval(null);
     }
+    toast.success("Simulation completed!");
     return;
   }
 
-  // Only continue if not processing a message
   if (isProcessingMessage) {
-    console.log("Skipping step while processing message");
+    console.log("Skipping step - message processing in progress");
     return;
   }
 
   try {
-    console.log(`Running belief propagation step ${config.currentStep + 1} of ${config.steps}`);
+    console.log(`Step ${config.currentStep + 1}: Starting message simulation`);
     
-    // Run one step of belief propagation
-    const updatedNetwork = runBeliefPropagationStep(network);
+    // Simulate message exchange
+    let updatedNetwork = simulateMessageExchange(network);
     
-    // Check if Gemini is enabled and has API key
-    const isGeminiActive = getGeminiEnabled() && !!getGeminiApiKey();
-    console.log(`Gemini is ${isGeminiActive ? 'enabled' : 'disabled'}, API Key present: ${!!getGeminiApiKey()}`);
+    console.log(`Step ${config.currentStep + 1}: Enhancing messages with AI`);
     
-    // Enhance messages with more diversity - make sure this runs
-    // Note that enhanceNetworkMessages is now async
-    const enhancedNetwork = await enhanceNetworkMessages(updatedNetwork);
+    // Enhance messages with AI
+    updatedNetwork = await enhanceNetworkMessages(updatedNetwork);
     
-    // Log message counts for debugging
-    console.log(`Messages before step: ${network.messageLog.length}`);
-    console.log(`Messages after step: ${enhancedNetwork.messageLog.length}`);
-    console.log(`New messages: ${enhancedNetwork.messageLog.length - network.messageLog.length}`);
+    console.log(`Step ${config.currentStep + 1}: Updating statistics`);
     
-    // Ensure message IDs are preserved
-    const newMessages = enhancedNetwork.messageLog.filter(
-      newMsg => !network.messageLog.some(oldMsg => oldMsg.id === newMsg.id)
-    );
-    console.log(`Filtered new messages: ${newMessages.length}`);
+    // Update statistics
+    const newStats = calculateStatistics(updatedNetwork);
+    setStatistics(newStats);
     
-    // For debugging, log content of first new message if available
-    if (newMessages.length > 0) {
-      console.log(`First new message: Agent #${newMessages[0].senderId} says "${newMessages[0].content}"`);
-    }
+    // Update history
+    const newHistory = generateBeliefHistoryData(updatedNetwork);
+    setHistoryData(prev => [...prev, ...newHistory]);
     
-    setNetwork(prev => ({
-      ...enhancedNetwork,
-      // Ensure we don't lose any messages if there's a race condition
-      messageLog: [...prev.messageLog, ...newMessages]
-    }));
+    // Update network and step
+    setNetwork(updatedNetwork);
+    setConfig(prev => ({ ...prev, currentStep: prev.currentStep + 1 }));
     
-    setConfig((prev) => ({
-      ...prev,
-      currentStep: prev.currentStep + 1,
-    }));
-
-    // Update stats
-    const stats = calculateStatistics(enhancedNetwork);
-    setStatistics(stats);
-
-    // Update history data
-    const history = generateBeliefHistoryData(enhancedNetwork);
-    setHistoryData(history);
+    console.log(`Step ${config.currentStep + 1}: Completed successfully`);
+    
   } catch (error) {
-    console.error("Step error:", error);
-    toast.error("Error during simulation step");
+    console.error("Error in simulation step:", error);
+    toast.error("Error occurred during simulation step");
     setIsRunning(false);
     if (runInterval) {
       clearInterval(runInterval);
@@ -110,28 +86,22 @@ export const handleStep = async ({
   }
 };
 
-// Handle running the simulation continuously
 export const handleRunContinuous = (
   stepInterval: number,
-  handleStep: () => Promise<void>,
-  setIsRunning: React.Dispatch<React.SetStateAction<boolean>>,
-  setRunInterval: React.Dispatch<React.SetStateAction<number | null>>
+  handleSimulationStep: () => Promise<void>,
+  setIsRunning: (running: boolean) => void,
+  setRunInterval: (interval: number | null) => void
 ) => {
   setIsRunning(true);
-  // Start with one step immediately
-  handleStep();
-  
-  const interval = window.setInterval(() => {
-    handleStep();
-  }, stepInterval);
+  const interval = setInterval(handleSimulationStep, stepInterval);
   setRunInterval(interval);
+  toast.info("Simulation started - running continuously");
 };
 
-// Handle pausing the simulation
 export const handlePause = (
   runInterval: number | null,
-  setIsRunning: React.Dispatch<React.SetStateAction<boolean>>,
-  setRunInterval: React.Dispatch<React.SetStateAction<number | null>>
+  setIsRunning: (running: boolean) => void,
+  setRunInterval: (interval: number | null) => void
 ) => {
   setIsRunning(false);
   if (runInterval) {
@@ -141,20 +111,17 @@ export const handlePause = (
   toast.info("Simulation paused");
 };
 
-// Handle resetting the simulation
 export const handleReset = async (
-  runInterval: number | null, 
+  runInterval: number | null,
   initializeSimulation: () => void,
-  setIsRunning: React.Dispatch<React.SetStateAction<boolean>>,
-  setRunInterval: React.Dispatch<React.SetStateAction<number | null>>
-): Promise<void> => {
+  setIsRunning: (running: boolean) => void,
+  setRunInterval: (interval: number | null) => void
+) => {
   setIsRunning(false);
   if (runInterval) {
     clearInterval(runInterval);
     setRunInterval(null);
   }
-  // Cancel any ongoing speech
-  cancelSpeech();
-  initializeSimulation();
-  toast.success("Simulation reset with a new discussion topic");
+  await initializeSimulation();
+  toast.success("Simulation reset");
 };
