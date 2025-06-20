@@ -6,15 +6,15 @@ import { Badge } from "@/components/ui/badge";
 import { Share2, Zap, Eye } from "lucide-react";
 import NetworkContainer from "./NetworkContainer";
 import NetworkBackground from "./NetworkBackground";
-import D3NetworkRenderer from "./D3NetworkRenderer";
 import OptimizedConstellationBackground from "./OptimizedConstellationBackground";
 import OptimizedBeliefPropagationEffects from "./OptimizedBeliefPropagationEffects";
-import PerformanceManager from "./PerformanceManager";
+import EnhancedPerformanceManager from "./EnhancedPerformanceManager";
+import HybridNetworkRenderer from "./HybridNetworkRenderer";
 
 interface NetworkVisualizationProps {
   network: Network;
   selectedAgentId: number | null;
-  onSelectAgent: (id: number) => void;
+  onSelectAgent: (id: number) => voi[d;
 }
 
 const NetworkVisualization: React.FC<NetworkVisualizationProps> = ({
@@ -48,17 +48,17 @@ const NetworkVisualization: React.FC<NetworkVisualizationProps> = ({
   const hasValidNetwork = network.nodes && network.nodes.length > 0;
 
   return (
-    <PerformanceManager targetFPS={60}>
+    <EnhancedPerformanceManager targetFPS={60}>
       <Card className="overflow-hidden h-full bg-gradient-to-br from-slate-900 to-slate-800 border-cyan-500/30 shadow-lg shadow-cyan-500/20">
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="text-lg flex items-center gap-2 text-cyan-400">
                 <Share2 className="h-5 w-5" />
-                3D Network Visualization
+                Adaptive Network Visualization
               </CardTitle>
               <CardDescription className="text-gray-400">
-                Interactive belief network simulation
+                High-performance belief network simulation
               </CardDescription>
             </div>
           </div>
@@ -118,7 +118,7 @@ const NetworkVisualization: React.FC<NetworkVisualizationProps> = ({
             
             {hasValidNetwork && (
               <>
-                <D3NetworkRenderer
+                <HybridNetworkRenderer
                   network={network}
                   selectedAgentId={selectedAgentId}
                   onSelectAgent={onSelectAgent}
@@ -135,7 +135,7 @@ const NetworkVisualization: React.FC<NetworkVisualizationProps> = ({
           </NetworkContainer>
         </CardContent>
       </Card>
-    </PerformanceManager>
+    </EnhancedPerformanceManager>
   );
 };
 
