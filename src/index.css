@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -60,66 +61,76 @@
   transition: all 0.3s ease;
 }
 
-/* New enhanced visual effects */
-@keyframes pulse {
+/* Optimized CSS animations for better performance */
+@keyframes optimizedPulse {
   0%, 100% {
     opacity: 0.3;
     transform: scale(1);
   }
   50% {
     opacity: 0.8;
-    transform: scale(1.05);
+    transform: scale(1.02);
   }
 }
 
-@keyframes glow {
+@keyframes optimizedGlow {
   0%, 100% {
-    filter: drop-shadow(0 0 5px currentColor);
+    filter: drop-shadow(0 0 3px currentColor);
   }
   50% {
-    filter: drop-shadow(0 0 20px currentColor);
+    filter: drop-shadow(0 0 8px currentColor);
   }
 }
 
-@keyframes float {
+@keyframes optimizedFloat {
   0%, 100% {
     transform: translateY(0px);
   }
   50% {
-    transform: translateY(-10px);
+    transform: translateY(-5px);
   }
 }
 
-@keyframes ripple {
-  0% {
-    transform: scale(0);
+@keyframes optimizedStarTwinkle {
+  0%, 100% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+  50% {
     opacity: 1;
-  }
-  100% {
-    transform: scale(4);
-    opacity: 0;
+    transform: scale(1.1);
   }
 }
 
-/* Apply animations to network elements */
+@keyframes optimizedConstellationPulse {
+  0%, 100% {
+    opacity: 0.15;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+/* Apply optimized animations */
 .outer-glow {
-  animation: pulse 2s ease-in-out infinite;
+  animation: optimizedPulse 3s ease-in-out infinite;
 }
 
 .inner-core {
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform, filter;
 }
 
 .inner-core:hover {
-  animation: glow 1.5s ease-in-out infinite;
+  animation: optimizedGlow 2s ease-in-out infinite;
 }
 
 .trait-indicator {
-  animation: float 3s ease-in-out infinite;
+  animation: optimizedFloat 4s ease-in-out infinite;
 }
 
 .node-label {
-  transition: all 0.3s ease;
+  transition: font-size 0.2s ease, font-weight 0.2s ease;
 }
 
 .node-group:hover .node-label {
@@ -127,21 +138,32 @@
   font-weight: 900;
 }
 
-.particle {
-  transition: all 0.1s ease;
+/* Optimized star animations with CSS instead of JS */
+.optimized-star {
+  animation: optimizedStarTwinkle 4s ease-in-out infinite;
+  will-change: opacity, transform;
 }
 
-.ripple {
-  animation: ripple 1.5s ease-out;
+.constellation-line {
+  animation: optimizedConstellationPulse 6s ease-in-out infinite;
+  will-change: opacity;
+}
+
+/* Performance optimized particle effects */
+.particle {
+  transition: opacity 0.1s ease;
+  will-change: transform, opacity;
 }
 
 .click-ripple {
   pointer-events: none;
+  will-change: transform, opacity;
 }
 
-/* Enhanced link styles */
+/* Enhanced link styles with performance in mind */
 .links line {
-  transition: stroke-width 0.3s ease, stroke-opacity 0.3s ease;
+  transition: stroke-width 0.2s ease, stroke-opacity 0.2s ease;
+  will-change: stroke-width, stroke-opacity;
 }
 
 .links line:hover {
@@ -149,105 +171,48 @@
   stroke-opacity: 0.8;
 }
 
-/* Message particle effects */
-.message-particles .particle {
-  animation: float 2s ease-in-out infinite;
-}
-
-/* Belief ripple effects */
-.belief-ripples .ripple {
-  animation: ripple 1.5s ease-out;
-}
-
-/* Enhanced belief propagation effects */
+/* Optimized belief propagation effects */
 .belief-wave {
-  animation: beliefWaveExpand 2s ease-out;
+  will-change: transform, opacity;
 }
 
 .influence-halo {
-  animation: influenceExpand 1s ease-out;
+  will-change: transform, opacity;
 }
 
 .conversion-particle {
-  animation: particleFloat 1s ease-out;
+  will-change: transform, opacity;
 }
 
-.constellation-line {
-  animation: constellationPulse 4s ease-in-out infinite;
-}
-
-.star {
-  animation: starTwinkle 3s ease-in-out infinite;
-}
-
-@keyframes beliefWaveExpand {
-  0% {
-    transform: scale(0);
-    opacity: 0.8;
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  .outer-glow,
+  .inner-core:hover,
+  .trait-indicator,
+  .optimized-star,
+  .constellation-line {
+    animation: none;
   }
-  50% {
-    opacity: 0.4;
-  }
-  100% {
-    transform: scale(1);
-    opacity: 0;
+  
+  .inner-core,
+  .node-label,
+  .particle,
+  .links line {
+    transition: none;
   }
 }
 
-@keyframes influenceExpand {
-  0% {
-    transform: scale(0);
-    opacity: 0.6;
-  }
-  100% {
-    transform: scale(1);
-    opacity: 0;
-  }
-}
-
-@keyframes particleFloat {
-  0% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  100% {
-    transform: scale(0.5);
-    opacity: 0;
-  }
-}
-
-@keyframes constellationPulse {
-  0%, 100% {
-    opacity: 0.2;
-  }
-  50% {
-    opacity: 0.4;
-  }
-}
-
-@keyframes starTwinkle {
-  0%, 100% {
-    opacity: 0.3;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 1;
-    transform: scale(1.2);
-  }
-}
-
-/* Enhanced network styling */
-.belief-propagation-effects {
-  pointer-events: none;
-}
-
-.constellation-background {
-  pointer-events: none;
-}
-
-/* Smooth transitions for all visual effects */
+/* GPU acceleration for smooth animations */
+.outer-glow,
+.inner-core,
+.trait-indicator,
+.optimized-star,
+.constellation-line,
+.particle,
 .belief-wave,
 .influence-halo,
 .conversion-particle {
-  transition: all 0.1s ease;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
 }
