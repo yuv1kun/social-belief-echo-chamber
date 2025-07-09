@@ -5,11 +5,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Share2, Zap, Eye } from "lucide-react";
 import NetworkContainer from "./NetworkContainer";
-import NetworkBackground from "./NetworkBackground";
-import OptimizedConstellationBackground from "./OptimizedConstellationBackground";
-import OptimizedBeliefPropagationEffects from "./OptimizedBeliefPropagationEffects";
-import EnhancedPerformanceManager from "./EnhancedPerformanceManager";
-import HybridNetworkRenderer from "./HybridNetworkRenderer";
+import SimpleNetworkRenderer from "./SimpleNetworkRenderer";
 
 interface NetworkVisualizationProps {
   network: Network;
@@ -48,94 +44,74 @@ const NetworkVisualization: React.FC<NetworkVisualizationProps> = ({
   const hasValidNetwork = network.nodes && network.nodes.length > 0;
 
   return (
-    <EnhancedPerformanceManager targetFPS={60}>
-      <Card className="overflow-hidden h-full bg-gradient-to-br from-slate-900 to-slate-800 border-cyan-500/30 shadow-lg shadow-cyan-500/20">
-        <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-lg flex items-center gap-2 text-cyan-400">
-                <Share2 className="h-5 w-5" />
-                Adaptive Network Visualization
-              </CardTitle>
-              <CardDescription className="text-gray-400">
-                High-performance belief network simulation
-              </CardDescription>
-            </div>
+    <Card className="overflow-hidden h-full bg-gradient-to-br from-slate-900 to-slate-800 border-cyan-500/30 shadow-lg shadow-cyan-500/20">
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="text-lg flex items-center gap-2 text-cyan-400">
+              <Share2 className="h-5 w-5" />
+              Network Visualization
+            </CardTitle>
+            <CardDescription className="text-gray-400">
+              Simple belief network simulation
+            </CardDescription>
           </div>
-          <div className="flex gap-2 mt-2">
-            {network.currentTopic && (
-              <Badge variant="outline" className="bg-cyan-500/10 border-cyan-500/30 text-cyan-400">
-                <Zap className="h-3 w-3 mr-1" />
-                Topic: {network.currentTopic}
+        </div>
+        <div className="flex gap-2 mt-2">
+          {network.currentTopic && (
+            <Badge variant="outline" className="bg-cyan-500/10 border-cyan-500/30 text-cyan-400">
+              <Zap className="h-3 w-3 mr-1" />
+              Topic: {network.currentTopic}
+            </Badge>
+          )}
+          {hasValidNetwork && (
+            <>
+              <Badge variant="default" className="bg-purple-600 text-white">
+                <Eye className="h-3 w-3 mr-1" />
+                {network.nodes.filter(n => n.believer).length} Believers
               </Badge>
-            )}
-            {hasValidNetwork && (
-              <>
-                <Badge variant="default" className="bg-purple-600 text-white">
-                  <Eye className="h-3 w-3 mr-1" />
-                  {network.nodes.filter(n => n.believer).length} Believers
-                </Badge>
-                <Badge variant="secondary" className="bg-gray-600 text-white">
-                  {network.nodes.filter(n => !n.believer).length} Skeptics
-                </Badge>
-              </>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent className="p-0">
-          <NetworkContainer onResize={handleResize}>
-            {isLoading && (
-              <div className="absolute inset-0 flex items-center justify-center bg-slate-900/50 z-10">
-                <div className="text-cyan-400 animate-pulse">Loading Network...</div>
-              </div>
-            )}
-            
-            {!isLoading && !hasValidNetwork && (
-              <div className="absolute inset-0 flex items-center justify-center bg-slate-900/50 z-10">
-                <div className="text-gray-400">No network data available</div>
-              </div>
-            )}
-            
-            <svg
-              ref={svgRef}
+              <Badge variant="secondary" className="bg-gray-600 text-white">
+                {network.nodes.filter(n => !n.believer).length} Skeptics
+              </Badge>
+            </>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent className="p-0">
+        <NetworkContainer onResize={handleResize}>
+          {isLoading && (
+            <div className="absolute inset-0 flex items-center justify-center bg-slate-900/50 z-10">
+              <div className="text-cyan-400 animate-pulse">Loading Network...</div>
+            </div>
+          )}
+          
+          {!isLoading && !hasValidNetwork && (
+            <div className="absolute inset-0 flex items-center justify-center bg-slate-900/50 z-10">
+              <div className="text-gray-400">No network data available</div>
+            </div>
+          )}
+          
+          <svg
+            ref={svgRef}
+            width={dimensions.width}
+            height={dimensions.height}
+            className="w-full h-full bg-slate-950"
+            style={{ display: 'block' }}
+          />
+          
+          {hasValidNetwork && (
+            <SimpleNetworkRenderer
+              network={network}
+              selectedAgentId={selectedAgentId}
+              onSelectAgent={onSelectAgent}
               width={dimensions.width}
               height={dimensions.height}
-              className="w-full h-full"
-              style={{ display: 'block' }}
-            />
-            
-            <OptimizedConstellationBackground 
-              width={dimensions.width} 
-              height={dimensions.height} 
               svgRef={svgRef}
             />
-            
-            <NetworkBackground 
-              width={dimensions.width} 
-              height={dimensions.height} 
-              svgRef={svgRef}
-            />
-            
-            {hasValidNetwork && (
-              <>
-                <HybridNetworkRenderer
-                  network={network}
-                  selectedAgentId={selectedAgentId}
-                  onSelectAgent={onSelectAgent}
-                  width={dimensions.width}
-                  height={dimensions.height}
-                  svgRef={svgRef}
-                />
-                <OptimizedBeliefPropagationEffects
-                  network={network}
-                  svgRef={svgRef}
-                />
-              </>
-            )}
-          </NetworkContainer>
-        </CardContent>
-      </Card>
-    </EnhancedPerformanceManager>
+          )}
+        </NetworkContainer>
+      </CardContent>
+    </Card>
   );
 };
 
