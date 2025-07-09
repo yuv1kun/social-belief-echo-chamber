@@ -60,9 +60,9 @@ export const clearApiKey = (): void => {
 
 // Validate API key format - relaxed validation
 export const isValidApiKey = (key: string): boolean => {
-  // ElevenLabs API keys typically start with "sk_" followed by a long alphanumeric string
-  // This is a more relaxed validation to accommodate different key formats
-  if (key.startsWith('sk_') && key.length > 20) {
+  // ElevenLabs API keys can have different formats
+  // Allow keys that are at least 10 characters long (very relaxed validation)
+  if (key && key.trim().length >= 10) {
     console.log("API key format validation passed");
     return true;
   } 
