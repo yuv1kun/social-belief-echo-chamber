@@ -80,76 +80,69 @@ const ElevenLabsSettings: React.FC = () => {
     setIsKeyVisible(!isKeyVisible);
   };
   
-  const handleTestVoice = () => {
+  const handleTestVoice = async () => {
     if (!getApiKey()) {
       toast.error("Please save an API key first");
       return;
     }
     
-    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-    if (audioContext.state === 'suspended') {
-      audioContext.resume();
-    }
-    
     setIsTestingVoice(true);
     
-    // Create an audio element for testing
-    const audioElement = new Audio();
-    
-    // Use a small test phrase
-    fetch('https://api.elevenlabs.io/v1/text-to-speech/EXAVITQu4vr4xnSDxMaL/stream', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'xi-api-key': getApiKey() as string
-      },
-      body: JSON.stringify({
-        text: "Hello, I'm your virtual assistant. Your ElevenLabs integration is working correctly.",
-        model_id: "eleven_multilingual_v2",
-        voice_settings: {
-          stability: 0.5,
-          similarity_boost: 0.75,
-          style: 0.5,
-          use_speaker_boost: true
-        }
-      })
-    })
-    .then(response => {
+    try {
+      // Test with the same method used in the speech library
+      const response = await fetch('https://api.elevenlabs.io/v1/text-to-speech/EXAVITQu4vr4xnSDxMaL/stream', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'xi-api-key': getApiKey() as string
+        },
+        body: JSON.stringify({
+          text: "Hello, I'm your virtual assistant. Your ElevenLabs integration is working correctly.",
+          model_id: "eleven_multilingual_v2",
+          voice_settings: {
+            stability: 0.5,
+            similarity_boost: 0.75,
+            style: 0.5,
+            use_speaker_boost: true
+          }
+        })
+      });
+
       if (!response.ok) {
         throw new Error(`ElevenLabs API error: ${response.status}`);
       }
-      return response.blob();
-    })
-    .then(blob => {
+
+      const blob = await response.blob();
+      const audioElement = new Audio();
       const url = URL.createObjectURL(blob);
+      
       audioElement.src = url;
       audioElement.onended = () => {
         URL.revokeObjectURL(url);
         setIsTestingVoice(false);
+        toast.success("Voice test completed successfully!");
       };
       audioElement.onerror = () => {
         setIsTestingVoice(false);
         toast.error("Failed to play test audio");
+        URL.revokeObjectURL(url);
       };
-      audioElement.play().catch(err => {
-        console.error('Could not play audio:', err);
-        setIsTestingVoice(false);
-        toast.error("Failed to play test audio. Please check browser permissions.");
-      });
-    })
-    .catch(error => {
+      
+      await audioElement.play();
+      
+    } catch (error) {
       console.error('Test voice error:', error);
       setIsTestingVoice(false);
       
       // Provide more specific error messages based on error type
-      if (error.message && error.message.includes("401")) {
+      if (error instanceof Error && error.message.includes("401")) {
         toast.error("API key validation failed. Please check your API key.");
-      } else if (error.message && error.message.includes("429")) {
+      } else if (error instanceof Error && error.message.includes("429")) {
         toast.error("Rate limit exceeded. Please try again later.");
       } else {
         toast.error("Failed to test voice. Please check your API key and try again.");
       }
-    });
+    }
   };
   
   return (
