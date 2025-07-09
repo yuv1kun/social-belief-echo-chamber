@@ -36,9 +36,13 @@ let audioElement: HTMLAudioElement | null = null;
 
 // Set the API key for ElevenLabs
 export const setApiKey = (key: string): void => {
-  apiKey = key;
-  localStorage.setItem('elevenlabs_api_key', key);
+  const cleanKey = key.trim();
+  apiKey = cleanKey;
+  localStorage.setItem('elevenlabs_api_key', cleanKey);
   console.log("API key saved to local storage");
+  console.log("API key length:", cleanKey.length);
+  console.log("API key starts with sk_:", cleanKey.startsWith('sk_'));
+  console.log("API key (first 20 chars):", cleanKey.substring(0, 20));
   toast.success("ElevenLabs API key saved");
 };
 
